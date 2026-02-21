@@ -16,36 +16,29 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
         with:
           ref: main
           fetch-depth: 0
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - name: Install dependencies
-        run: |
-          pip install pandas numpy yfinance
+      - run: pip install pandas numpy yfinance
 
-      - name: Run return matrix script
-        run: python scripts/build_return_matrix.py
+      - run: python scripts/build_return_matrix.py
 
-      - name: Create/Update PR with results
+      - name: Create/Update PR
         uses: peter-evans/create-pull-request@v6
         with:
           branch: auto/return-matrix
-          delete-branch: true
-          commit-message: "Auto update return matrix"
+          base: main
           title: "Auto update return matrix"
-          body: |
-            Automated update of:
-            - data/daily_returns.csv
-            - data/correlation_matrix.csv
+          commit-message: "Auto update return matrix"
+          body: "Automated update of daily_returns.csv and correlation_matrix.csv"
           add-paths: |
             data/daily_returns.csv
             data/correlation_matrix.csv
+          delete-branch: false
