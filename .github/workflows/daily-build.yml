@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 concurrency:
   group: return-matrix
@@ -21,7 +22,6 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
-          persist-credentials: true
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -35,26 +35,17 @@ jobs:
       - name: Run return matrix script
         run: python scripts/build_return_matrix.py
 
-      - name: Commit & push results (safe fast-forward)
-        run: |
-          set -e
-
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-
-          # Ensure we're on the latest remote main RIGHT BEFORE we commit
-          git fetch origin main
-          git checkout main
-          git reset --hard origin/main
-
-          # Re-stage outputs after reset (reset clears index)
-          git add data/daily_returns.csv data/correlation_matrix.csv
-
-          # If nothing changed, stop
-          if git diff --cached --quiet; then
-            echo "No changes to commit"
-            exit 0
-          fi
-
-          git commit -m "Auto update return matrix"
-          git push origin main
+      - name: Create/Update PR with results
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: auto/return-matrix
+          delete-branch: true
+          commit-message: "Auto update return matrix"
+          title: "Auto update return matrix"
+          body: |
+            Automated update of:
+            - data/daily_returns.csv
+            - data/correlation_matrix.csv
+          add-paths: |
+            data/daily_returns.csv
+            data/correlation_matrix.csv
