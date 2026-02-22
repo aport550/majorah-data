@@ -5,8 +5,6 @@ on:
   schedule:
     - cron: "0 6 * * *" # daily 6am UTC
 
-# You do NOT need write perms just to upload artifacts.
-# Keep PR perms only if you want the optional PR step.
 permissions:
   contents: read
   pull-requests: write
@@ -33,7 +31,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install pandas numpy yfinance
+          pip install pandas numpy yfinance scipy
 
       - name: Run return matrix script
         run: |
@@ -41,7 +39,8 @@ jobs:
           python scripts/build_return_matrix.py
 
       - name: Build clusters
-        run: python scripts/build_clusters.py
+        run: |
+          python scripts/build_clusters.py
 
       - name: Verify outputs exist (and show files)
         run: |
@@ -51,8 +50,11 @@ jobs:
           ls -lah
           echo "Listing data/:"
           ls -lah data
+
           test -f data/daily_returns.csv
           test -f data/correlation_matrix.csv
+          test -f data/clusters.json
+
           echo "✅ Outputs exist."
 
       - name: Upload outputs as artifacts (guaranteed)
@@ -74,7 +76,7 @@ jobs:
           base: main
           title: "Auto update return matrix"
           commit-message: "Auto update return matrix"
-          body: "Automated update of daily_returns.csv and correlation_matrix.csv"
+          body: "Automated update of daily_returns.csv and correlation_matrix.csv and clusters.json"
           add-paths: |
             data/daily_returns.csv
             data/correlation_matrix.csv
