@@ -62,6 +62,7 @@ jobs:
           path: |
             data/daily_returns.csv
             data/correlation_matrix.csv
+            data/clusters.json
           if-no-files-found: error
 
       # Optional: try PR update, but don't fail the build if policy blocks it
