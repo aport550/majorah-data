@@ -64,6 +64,10 @@ jobs:
         run: |
           mkdir -p data
           python scripts/build_return_matrix.py
+          echo ""
+          echo "After return matrix, public/data tree:"
+          ls -lah public || true
+          ls -lah public/data || true
 
       - name: Build clusters
         run: |
@@ -90,6 +94,8 @@ jobs:
           test -f data/correlation_matrix.csv
           test -f public/data/clusters.json
           test -f public/data/top_correlations.json
+          test -f public/data/vols.json
+          test -f public/data/covariance_matrix.csv
           echo "All outputs exist."
 
       - name: Upload outputs
@@ -101,6 +107,8 @@ jobs:
             data/correlation_matrix.csv
             public/data/clusters.json
             public/data/top_correlations.json
+            public/data/vols.json
+            public/data/covariance_matrix.csv
           if-no-files-found: error
 
       - name: Create PR
@@ -117,3 +125,5 @@ jobs:
             data/correlation_matrix.csv
             public/data/clusters.json
             public/data/top_correlations.json
+            public/data/vols.json
+            public/data/covariance_matrix.csv
