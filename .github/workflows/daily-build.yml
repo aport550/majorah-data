@@ -16,12 +16,23 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Debug: show repo structure
+        run: |
+          set -euo pipefail
+          echo "Repo root:"
+          ls -lah
+          echo "Workflows:"
+          ls -lah .github/workflows || true
+          echo "Scripts:"
+          ls -lah scripts || true
+          echo "Does clustering script exist?"
+          test -f scripts/build_clusters.py && echo "✅ scripts/build_clusters.py exists" || (echo "❌ scripts/build_clusters.py MISSING" && exit 1)
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -30,19 +41,23 @@ jobs:
 
       - name: Install dependencies
         run: |
+          set -euo pipefail
           pip install pandas numpy yfinance scipy
 
       - name: Run return matrix script
         run: |
+          set -euo pipefail
           mkdir -p data
           python scripts/build_return_matrix.py
 
       - name: Build clusters
         run: |
+          set -euo pipefail
           python scripts/build_clusters.py
 
-      - name: Verify outputs exist (and show files)
+      - name: Verify outputs exist (MUST include clusters.json)
         run: |
+          set -euo pipefail
           echo "Listing data/:"
           ls -lah data
           test -f data/daily_returns.csv
