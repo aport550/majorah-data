@@ -15,7 +15,7 @@ EXCLUDE = {
     "SOXS","SOXL","IONZ","PLTD","METD","AAPD",
     "VB","SPYI","QQQI","JEPQ","DGRO","TQQQ",
     "SCHG","NANC","SVXY","VXX","UVIX","UVXY",
-    "XAIX","ETHD","YMAX","BOTZ","FMET","VGLT","GOP","VIG","IBOT","VYM","ARKK","BBEU","ARKW","CHPX","
+    "XAIX","ETHD","YMAX","BOTZ","FMET","VGLT","GOP","VIG","IBOT","VYM","ARKK","BBEU","ARKW","CHPX"
 }
 
 # Explicitly KEEP these even if future edits touch EXCLUDE
