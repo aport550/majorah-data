@@ -40,6 +40,9 @@ jobs:
           mkdir -p data
           python scripts/build_return_matrix.py
 
+      - name: Build clusters
+        run: python scripts/build_clusters.py
+
       - name: Verify outputs exist (and show files)
         run: |
           echo "PWD:"
@@ -74,4 +77,5 @@ jobs:
           add-paths: |
             data/daily_returns.csv
             data/correlation_matrix.csv
+            data/clusters.json
           delete-branch: false
