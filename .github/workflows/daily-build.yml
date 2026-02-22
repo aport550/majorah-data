@@ -21,7 +21,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: main
           fetch-depth: 0
 
       - name: Set up Python
@@ -44,20 +43,14 @@ jobs:
 
       - name: Verify outputs exist (and show files)
         run: |
-          echo "PWD:"
-          pwd
-          echo "Repo root:"
-          ls -lah
           echo "Listing data/:"
           ls -lah data
-
           test -f data/daily_returns.csv
           test -f data/correlation_matrix.csv
           test -f data/clusters.json
+          echo "✅ All outputs exist."
 
-          echo "✅ Outputs exist."
-
-      - name: Upload outputs as artifacts (guaranteed)
+      - name: Upload outputs as artifacts
         uses: actions/upload-artifact@v4
         with:
           name: return-matrix
@@ -67,7 +60,6 @@ jobs:
             data/clusters.json
           if-no-files-found: error
 
-      # Optional: try PR update, but don't fail the build if policy blocks it
       - name: Create/Update PR (optional)
         continue-on-error: true
         uses: peter-evans/create-pull-request@v6
@@ -76,7 +68,7 @@ jobs:
           base: main
           title: "Auto update return matrix"
           commit-message: "Auto update return matrix"
-          body: "Automated update of daily_returns.csv and correlation_matrix.csv and clusters.json"
+          body: "Automated update of daily_returns.csv, correlation_matrix.csv, clusters.json"
           add-paths: |
             data/daily_returns.csv
             data/correlation_matrix.csv
