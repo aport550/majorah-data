@@ -16,21 +16,45 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
         with:
           ref: main
           fetch-depth: 0
 
-      - uses: actions/setup-python@v5
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - run: pip install pandas numpy yfinance
+      - name: Install dependencies
+        run: |
+          pip install pandas numpy yfinance
 
-      - run: python scripts/build_return_matrix.py
+      - name: Run return matrix script
+        run: python scripts/build_return_matrix.py
 
-      - name: Create/Update PR
+      - name: Verify outputs exist
+        run: |
+          echo "Listing data/ ..."
+          ls -lah data || true
+          test -f data/daily_returns.csv
+          test -f data/correlation_matrix.csv
+          echo "✅ Outputs exist."
+
+      - name: Upload outputs as artifacts (guaranteed)
+        uses: actions/upload-artifact@v4
+        with:
+          name: return-matrix
+          path: |
+            data/daily_returns.csv
+            data/correlation_matrix.csv
+          if-no-files-found: error
+
+      # Optional: try PR update, but don't fail the build if policy blocks it
+      - name: Create/Update PR (optional)
+        continue-on-error: true
         uses: peter-evans/create-pull-request@v6
         with:
           branch: auto/return-matrix
