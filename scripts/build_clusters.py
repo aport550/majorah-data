@@ -9,7 +9,7 @@ DIST_THRESHOLD = 0.65  # tweak later
 
 def main():
     corr_path = "data/correlation_matrix.csv"
-    out_path = "data/clusters.json"
+    out_path = "public/data/clusters.json"
 
     if not os.path.exists(corr_path):
         raise RuntimeError(f"Missing {corr_path}. Did daily returns step run and create correlation_matrix.csv?")
