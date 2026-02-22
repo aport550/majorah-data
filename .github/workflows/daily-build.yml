@@ -16,6 +16,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -23,16 +24,25 @@ jobs:
           fetch-depth: 0
 
       - name: Debug: show repo structure
+        shell: bash
         run: |
-          set -euo pipefail
+          set -e
           echo "Repo root:"
           ls -lah
+          echo ""
           echo "Workflows:"
           ls -lah .github/workflows || true
+          echo ""
           echo "Scripts:"
           ls -lah scripts || true
+          echo ""
           echo "Does clustering script exist?"
-          test -f scripts/build_clusters.py && echo "✅ scripts/build_clusters.py exists" || (echo "❌ scripts/build_clusters.py MISSING" && exit 1)
+          if [ -f scripts/build_clusters.py ]; then
+            echo "OK: scripts/build_clusters.py exists"
+          else
+            echo "ERROR: scripts/build_clusters.py is missing"
+            exit 1
+          fi
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -40,26 +50,30 @@ jobs:
           python-version: "3.11"
 
       - name: Install dependencies
+        shell: bash
         run: |
-          set -euo pipefail
+          set -e
           pip install pandas numpy yfinance scipy
 
       - name: Run return matrix script
+        shell: bash
         run: |
-          set -euo pipefail
+          set -e
           mkdir -p data
           python scripts/build_return_matrix.py
 
       - name: Build clusters
+        shell: bash
         run: |
-          set -euo pipefail
+          set -e
           python scripts/build_clusters.py
 
       - name: Verify outputs exist (MUST include clusters.json)
+        shell: bash
         run: |
-          set -euo pipefail
+          set -e
           echo "Listing data/:"
-          ls -lah data
+          ls -lah data || true
           test -f data/daily_returns.csv
           test -f data/correlation_matrix.csv
           test -f data/clusters.json
