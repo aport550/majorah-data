@@ -41,6 +41,14 @@ jobs:
             echo "ERROR: scripts/build_clusters.py is missing"
             exit 1
           fi
+          echo ""
+          echo "Does top correlations script exist?"
+          if [ -f scripts/build_top_correlations.py ]; then
+            echo "OK: scripts/build_top_correlations.py exists"
+          else
+            echo "ERROR: scripts/build_top_correlations.py is missing"
+            exit 1
+          fi
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -65,6 +73,14 @@ jobs:
           ls -lah public || true
           ls -lah public/data || true
 
+      - name: Build top correlations
+        run: |
+          python scripts/build_top_correlations.py
+          echo ""
+          echo "After top correlations, public/ tree:"
+          ls -lah public || true
+          ls -lah public/data || true
+
       - name: Verify outputs
         run: |
           ls -lah data || true
@@ -73,6 +89,7 @@ jobs:
           test -f data/daily_returns.csv
           test -f data/correlation_matrix.csv
           test -f public/data/clusters.json
+          test -f public/data/top_correlations.json
           echo "All outputs exist."
 
       - name: Upload outputs
@@ -83,6 +100,7 @@ jobs:
             data/daily_returns.csv
             data/correlation_matrix.csv
             public/data/clusters.json
+            public/data/top_correlations.json
           if-no-files-found: error
 
       - name: Create PR
@@ -98,3 +116,4 @@ jobs:
             data/daily_returns.csv
             data/correlation_matrix.csv
             public/data/clusters.json
+            public/data/top_correlations.json
