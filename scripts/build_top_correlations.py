@@ -5,7 +5,8 @@ from datetime import date
 import numpy as np
 import pandas as pd
 
-TOP_K = 10
+TOP_K = 20
+
 
 def main():
     corr_path = "data/correlation_matrix.csv"
@@ -20,7 +21,7 @@ def main():
     if corr.empty:
         raise RuntimeError("Correlation matrix is empty.")
 
-    # ensure numeric + square on common labels
+    # numeric + square on common labels
     corr = corr.apply(pd.to_numeric, errors="coerce")
     idx = corr.index.astype(str)
     cols = corr.columns.astype(str)
@@ -37,13 +38,16 @@ def main():
         s = s.drop(labels=[t], errors="ignore")  # remove self
         s = s.replace([np.inf, -np.inf], np.nan).dropna()
 
-        # sort highest corr first, take top K
-        top = s.sort_values(ascending=False).head(TOP_K)
+        # strongest positive
+        pos = s.sort_values(ascending=False).head(TOP_K)
 
-        items[t] = [
-            {"ticker": str(other), "corr": float(val)}
-            for other, val in top.items()
-        ]
+        # most inverse (most negative)
+        neg = s.sort_values(ascending=True).head(TOP_K)
+
+        items[t] = {
+            "positive": [{"ticker": str(o), "corr": float(v)} for o, v in pos.items()],
+            "negative": [{"ticker": str(o), "corr": float(v)} for o, v in neg.items()],
+        }
 
     payload = {
         "as_of": date.today().isoformat(),
@@ -55,6 +59,7 @@ def main():
         json.dump(payload, f, indent=2)
 
     print(f"✅ Wrote {out_path} ({os.path.getsize(out_path)} bytes)")
+
 
 if __name__ == "__main__":
     main()
