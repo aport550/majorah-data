@@ -14,19 +14,18 @@ def main():
     if not os.path.exists(corr_path):
         raise RuntimeError(f"Missing {corr_path}. Did daily returns step run and create correlation_matrix.csv?")
 
-    os.makedirs("data", exist_ok=True)
+    # ensure output folder exists (public/data)
+    os.makedirs(os.path.dirname(out_path), exist_ok=True)
 
     corr = pd.read_csv(corr_path, index_col=0)
 
     if corr.empty:
         raise RuntimeError("Correlation matrix is empty.")
 
-    # ensure numeric + square
     corr = corr.apply(pd.to_numeric, errors="coerce")
     corr = corr.loc[corr.index, corr.index]
     corr_values = np.nan_to_num(corr.values.astype(float), nan=0.0)
 
-    # corr -> distance
     dist = 1.0 - corr_values
     np.fill_diagonal(dist, 0.0)
     dist = np.clip(dist, 0.0, 2.0)
