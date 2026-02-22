@@ -5,8 +5,10 @@ on:
   schedule:
     - cron: "0 6 * * *" # daily 6am UTC
 
+# You do NOT need write perms just to upload artifacts.
+# Keep PR perms only if you want the optional PR step.
 permissions:
-  contents: write
+  contents: read
   pull-requests: write
 
 concurrency:
@@ -18,7 +20,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
           ref: main
           fetch-depth: 0
@@ -33,12 +36,18 @@ jobs:
           pip install pandas numpy yfinance
 
       - name: Run return matrix script
-        run: python scripts/build_return_matrix.py
-
-      - name: Verify outputs exist
         run: |
-          echo "Listing data/ ..."
-          ls -lah data || true
+          mkdir -p data
+          python scripts/build_return_matrix.py
+
+      - name: Verify outputs exist (and show files)
+        run: |
+          echo "PWD:"
+          pwd
+          echo "Repo root:"
+          ls -lah
+          echo "Listing data/:"
+          ls -lah data
           test -f data/daily_returns.csv
           test -f data/correlation_matrix.csv
           echo "✅ Outputs exist."
