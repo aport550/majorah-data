@@ -66,7 +66,7 @@ jobs:
           ls -lah data || true
           test -f data/daily_returns.csv
           test -f data/correlation_matrix.csv
-          test -f data/clusters.json
+          test -f public/data/clusters.json
           echo "All outputs exist."
 
       - name: Upload outputs
@@ -76,7 +76,7 @@ jobs:
           path: |
             data/daily_returns.csv
             data/correlation_matrix.csv
-            data/clusters.json
+            public/data/clusters.json
           if-no-files-found: error
 
       - name: Create PR
