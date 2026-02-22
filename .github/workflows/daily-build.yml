@@ -3,7 +3,7 @@ name: Build Return Matrix
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 6 * * *" # daily 6am UTC
+    - cron: "0 6 * * *"
 
 permissions:
   contents: write
@@ -16,15 +16,13 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Debug: show repo structure
-        shell: bash
+      - name: Debug repo structure
         run: |
           set -e
           echo "Repo root:"
@@ -50,37 +48,28 @@ jobs:
           python-version: "3.11"
 
       - name: Install dependencies
-        shell: bash
         run: |
-          set -e
           python -m pip install --upgrade pip
           pip install pandas numpy yfinance scipy
 
       - name: Run return matrix script
-        shell: bash
         run: |
-          set -e
           mkdir -p data
           python scripts/build_return_matrix.py
 
       - name: Build clusters
-        shell: bash
         run: |
-          set -e
           python scripts/build_clusters.py
 
-      - name: Verify outputs exist (MUST include clusters.json)
-        shell: bash
+      - name: Verify outputs
         run: |
-          set -e
-          echo "Listing data/:"
           ls -lah data || true
           test -f data/daily_returns.csv
           test -f data/correlation_matrix.csv
           test -f data/clusters.json
-          echo "✅ All outputs exist."
+          echo "All outputs exist."
 
-      - name: Upload outputs as artifacts
+      - name: Upload outputs
         uses: actions/upload-artifact@v4
         with:
           name: return-matrix
@@ -90,17 +79,16 @@ jobs:
             data/clusters.json
           if-no-files-found: error
 
-      - name: Create/Update PR (optional)
+      - name: Create PR
         continue-on-error: true
         uses: peter-evans/create-pull-request@v6
         with:
           branch: auto/return-matrix
           base: main
-          title: "Auto update return matrix"
-          commit-message: "Auto update return matrix"
-          body: "Automated update of daily_returns.csv, correlation_matrix.csv, clusters.json"
+          title: Auto update return matrix
+          commit-message: Auto update return matrix
+          body: Automated update of generated data files
           add-paths: |
             data/daily_returns.csv
             data/correlation_matrix.csv
             data/clusters.json
-          delete-branch: false
