@@ -1,6 +1,8 @@
 import time
 import os
 import json
+import datetime as dt
+
 import pandas as pd
 import numpy as np
 import yfinance as yf
@@ -138,19 +140,16 @@ def main():
     print("Saved data/correlation_matrix.csv")
 
     # =========================
-    # Part 2 outputs (NEW)
+    # Public outputs
     # =========================
-
-    # Ensure public/data exists
     os.makedirs("public/data", exist_ok=True)
 
-    # Volatility per ticker (daily + annualized) based on % returns
-    # (Units: % per day and % per year)
-    vol_daily = returns.std(skipna=True)
-    vol_annual = vol_daily * np.sqrt(TRADING_DAYS)
+    # ---- Volatility (daily + annualized), based on % returns
+    vol_daily = returns.std(skipna=True)  # % per day
+    vol_annual = vol_daily * np.sqrt(TRADING_DAYS)  # % per year
 
     vols_payload = {
-        "as_of": pd.Timestamp.today().date().isoformat(),
+        "as_of": dt.date.today().isoformat(),
         "start_date": START_DATE,
         "trading_days": TRADING_DAYS,
         "units": "percent",
@@ -164,12 +163,36 @@ def main():
         json.dump(vols_payload, f, indent=2)
     print(f"Saved {vols_path} ({os.path.getsize(vols_path)} bytes)")
 
-    # Covariance matrix (daily) based on % returns
+    # ---- Covariance matrix (daily), based on % returns
     # Units: (percent^2) per day
     cov_daily = returns.cov()
     cov_path = "public/data/covariance_matrix.csv"
     cov_daily.to_csv(cov_path)
     print(f"Saved {cov_path} ({os.path.getsize(cov_path)} bytes)")
+
+    # ---- Expected returns (annualized), based on % returns
+    # Mean daily return (%/day) -> annual (%/year) via *252
+    mean_daily = returns.mean(skipna=True)  # % per day
+    mean_annual = mean_daily * TRADING_DAYS  # % per year
+
+    exp_payload = {
+        "as_of": dt.date.today().isoformat(),
+        "start_date": START_DATE,
+        "trading_days": TRADING_DAYS,
+        "units": "percent",
+        "expected_return_daily_pct": {
+            str(k): float(v) for k, v in mean_daily.dropna().items()
+        },
+        "expected_return_annual_pct": {
+            str(k): float(v) for k, v in mean_annual.dropna().items()
+        },
+        "ticker_count": int(len(mean_annual.dropna())),
+    }
+
+    exp_path = "public/data/expected_returns.json"
+    with open(exp_path, "w", encoding="utf-8") as f:
+        json.dump(exp_payload, f, indent=2)
+    print(f"Saved {exp_path} ({os.path.getsize(exp_path)} bytes)")
 
 
 if __name__ == "__main__":
