@@ -45,6 +45,10 @@ def main():
             seen.add(t)
             tickers.append(t)
 
+    # Ensure SPY is present for defensive / beta / downside metrics
+    if "SPY" not in seen:
+        tickers.append("SPY")
+
     print(f"Universe tickers: {len(tickers)}")
     print("First 10 tickers:", tickers[:10])
 
@@ -133,6 +137,12 @@ def main():
     os.makedirs("data", exist_ok=True)
     returns.to_csv("data/daily_returns.csv")
     print("Saved data/daily_returns.csv")
+
+    # Also save publicly for frontend usage
+    os.makedirs("public/data", exist_ok=True)
+    public_returns_path = "public/data/daily_returns.csv"
+    returns.to_csv(public_returns_path)
+    print(f"Saved {public_returns_path} ({os.path.getsize(public_returns_path)} bytes)")
 
     # Correlation matrix
     corr = returns.corr()
