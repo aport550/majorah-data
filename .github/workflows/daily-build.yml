@@ -111,8 +111,6 @@ jobs:
           ls -lah public/data || true
 
       - name: Build fundamental trends
-        env:
-          FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
         run: |
           python scripts/build_fundamental_trends.py
           echo ""
