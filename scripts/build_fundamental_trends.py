@@ -105,8 +105,8 @@ def read_universe() -> List[str]:
 
 def fetch_income_statement_quarterly(symbol: str) -> List[dict]:
     url = (
-        f"https://financialmodelingprep.com/api/v3/income-statement/{symbol}"
-        f"?period=quarter&limit={FMP_LIMIT}&apikey={FMP_API_KEY}"
+        "https://financialmodelingprep.com/stable/income-statement"
+        f"?symbol={symbol}&period=quarter&limit={FMP_LIMIT}&apikey={FMP_API_KEY}"
     )
 
     response = requests.get(url, timeout=30)
@@ -116,7 +116,6 @@ def fetch_income_statement_quarterly(symbol: str) -> List[dict]:
     if not isinstance(data, list):
         return []
     return data
-
 
 def normalize_rows(rows: List[dict]) -> List[dict]:
     """
