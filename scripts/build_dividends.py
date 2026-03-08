@@ -151,14 +151,19 @@ def compute_trailing_annual_dividend_per_share(orig_ticker: str) -> float | None
     if divs.empty:
         return 0.0
 
-    cutoff = pd.Timestamp(dt.datetime.now() - dt.timedelta(days=LOOKBACK_DAYS))
+    # Normalize dividend index to timezone-naive
+    idx = pd.to_datetime(divs.index)
+    if getattr(idx, "tz", None) is not None:
+        idx = idx.tz_localize(None)
+    divs.index = idx
+
+    cutoff = pd.Timestamp.utcnow().tz_localize(None) - pd.Timedelta(days=LOOKBACK_DAYS)
     recent = divs[divs.index >= cutoff]
 
     if recent.empty:
         return 0.0
 
     return float(recent.sum())
-
 
 def safe_round(x, digits=6):
     if x is None or not np.isfinite(x):
