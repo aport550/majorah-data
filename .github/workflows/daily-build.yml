@@ -94,6 +94,13 @@ jobs:
           ls -lah public || true
           ls -lah public/data || true
           
+      - name: Build sectors
+        run: |
+          python scripts/build_sectors.py
+          echo ""
+          echo "After sectors build, public/ tree:"
+          ls -lah public || true
+          ls -lah public/data || true
 
       - name: Verify outputs
         run: |
@@ -108,6 +115,7 @@ jobs:
           test -f public/data/covariance_matrix.csv
           test -f public/data/expected_returns.json
           test -f public/data/dividends.json
+          test -f public/data/sectors.json
           echo "All outputs exist."
 
       - name: Upload outputs
@@ -123,6 +131,7 @@ jobs:
             public/data/covariance_matrix.csv
             public/data/expected_returns.json
             public/data/dividends.json
+            public/data/sectors.json
           if-no-files-found: error
 
       - name: Create PR
@@ -140,6 +149,7 @@ jobs:
             public/data/clusters.json
             public/data/top_correlations.json
             public/data/dividends.json
+            public/data/sectors.json
             public/data/vols.json
             public/data/covariance_matrix.csv
             public/data/expected_returns.json
