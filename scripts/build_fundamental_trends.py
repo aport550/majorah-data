@@ -3,15 +3,13 @@ import json
 import math
 import time
 import datetime as dt
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 import pandas as pd
-import requests
+import yfinance as yf
 
 UNIVERSE_PATH = "data/universe.csv"
 OUTPUT_PATH = "public/data/fundamental_trends.json"
-
-FMP_API_KEY = os.environ.get("FMP_API_KEY", "").strip()
 
 # Revenue trend weights
 REV_WEIGHTS = {
@@ -27,8 +25,7 @@ MARGIN_WEIGHTS = {
     "m03": 0.60,
 }
 
-REQUEST_SLEEP = 0.20
-FMP_LIMIT = 8  # fetch a few extra quarters for safety
+REQUEST_SLEEP = 0.35
 
 
 def safe_num(x) -> Optional[float]:
@@ -61,7 +58,6 @@ def weighted_sum(parts: Dict[str, Optional[float]], weights: Dict[str, float]) -
     if used == 0:
         return None
 
-    # Re-weight if some inputs are missing
     return total / used
 
 
@@ -103,31 +99,121 @@ def read_universe() -> List[str]:
     return tickers
 
 
-def fetch_income_statement_quarterly(symbol: str) -> List[dict]:
-    url = (
-        "https://financialmodelingprep.com/stable/income-statement"
-        f"?symbol={symbol}&period=quarter&limit={FMP_LIMIT}&apikey={FMP_API_KEY}"
+def normalize_for_yahoo(t: str) -> str:
+    t = str(t).strip().upper()
+    if not t:
+        return ""
+    return t.replace(".", "-")
+
+
+def first_existing_index(df: pd.DataFrame, candidates: List[str]) -> Optional[str]:
+    if df is None or df.empty:
+        return None
+
+    normalized = {str(idx).strip().lower(): idx for idx in df.index}
+    for c in candidates:
+        key = str(c).strip().lower()
+        if key in normalized:
+            return normalized[key]
+    return None
+
+
+def get_series_value(df: pd.DataFrame, row_name: str, col) -> Optional[float]:
+    try:
+        return safe_num(df.loc[row_name, col])
+    except Exception:
+        return None
+
+
+def quarter_label(d: pd.Timestamp) -> str:
+    if pd.isna(d):
+        return ""
+    month = int(d.month)
+    q = ((month - 1) // 3) + 1
+    return f"Q{q}"
+
+
+def format_date(d) -> Optional[str]:
+    try:
+        ts = pd.Timestamp(d)
+        if pd.isna(ts):
+            return None
+        return ts.date().isoformat()
+    except Exception:
+        return None
+
+
+def fetch_quarterly_income_df(symbol: str) -> pd.DataFrame:
+    yahoo_symbol = normalize_for_yahoo(symbol)
+    ticker = yf.Ticker(yahoo_symbol)
+
+    df = ticker.quarterly_income_stmt
+    if df is None or df.empty:
+        raise RuntimeError("quarterly_income_stmt empty")
+
+    if not isinstance(df, pd.DataFrame) or df.empty:
+        raise RuntimeError("quarterly_income_stmt not usable")
+
+    # yfinance usually returns line items as index and quarter-end dates as columns.
+    cols = []
+    for c in df.columns:
+        try:
+            cols.append(pd.Timestamp(c))
+        except Exception:
+            cols.append(pd.NaT)
+
+    if not any(pd.notna(c) for c in cols):
+        raise RuntimeError("No parseable quarterly columns")
+
+    df = df.copy()
+    df.columns = cols
+    df = df.loc[:, pd.notna(df.columns)]
+
+    if df.empty:
+        raise RuntimeError("No valid quarterly columns after parsing")
+
+    # oldest -> newest
+    df = df.reindex(sorted(df.columns), axis=1)
+    return df
+
+
+def extract_quarterly_rows(symbol: str) -> List[dict]:
+    df = fetch_quarterly_income_df(symbol)
+
+    revenue_key = first_existing_index(
+        df,
+        [
+            "Total Revenue",
+            "Revenue",
+            "Operating Revenue",
+        ],
     )
 
-    response = requests.get(url, timeout=30)
-    response.raise_for_status()
-    data = response.json()
+    operating_income_key = first_existing_index(
+        df,
+        [
+            "Operating Income",
+            "OperatingIncome",
+            "EBIT",
+        ],
+    )
 
-    if not isinstance(data, list):
-        return []
-    return data
+    gross_profit_key = first_existing_index(
+        df,
+        [
+            "Gross Profit",
+            "GrossProfit",
+        ],
+    )
 
-def normalize_rows(rows: List[dict]) -> List[dict]:
-    """
-    Normalize FMP quarterly rows into a simpler structure.
-    FMP usually returns newest first, but we sort oldest -> newest.
-    """
-    out = []
+    if revenue_key is None:
+        raise RuntimeError("Revenue row not found in quarterly income statement")
 
-    for r in rows:
-        revenue = safe_num(r.get("revenue"))
-        operating_income = safe_num(r.get("operatingIncome"))
-        gross_profit = safe_num(r.get("grossProfit"))
+    rows = []
+    for col in df.columns:
+        revenue = get_series_value(df, revenue_key, col)
+        operating_income = get_series_value(df, operating_income_key, col) if operating_income_key else None
+        gross_profit = get_series_value(df, gross_profit_key, col) if gross_profit_key else None
 
         operating_margin = (
             operating_income / revenue
@@ -140,11 +226,11 @@ def normalize_rows(rows: List[dict]) -> List[dict]:
             else None
         )
 
-        out.append(
+        rows.append(
             {
-                "date": r.get("date"),
-                "calendarYear": str(r.get("calendarYear")) if r.get("calendarYear") is not None else None,
-                "period": r.get("period"),
+                "date": format_date(col),
+                "calendarYear": str(pd.Timestamp(col).year),
+                "period": quarter_label(pd.Timestamp(col)),
                 "revenue": revenue,
                 "operatingIncome": operating_income,
                 "grossProfit": gross_profit,
@@ -153,9 +239,9 @@ def normalize_rows(rows: List[dict]) -> List[dict]:
             }
         )
 
-    out = [x for x in out if x.get("date")]
-    out.sort(key=lambda x: x["date"])
-    return out
+    rows = [r for r in rows if r.get("date")]
+    rows.sort(key=lambda x: x["date"])
+    return rows
 
 
 def find_same_quarter_last_year(rows: List[dict], latest_row: dict) -> Optional[dict]:
@@ -178,12 +264,6 @@ def find_same_quarter_last_year(rows: List[dict], latest_row: dict) -> Optional[
 
 
 def compute_revenue_block(rows: List[dict]) -> dict:
-    """
-    R0 = latest quarter
-    R1 = previous quarter
-    R2 = two quarters ago
-    R3 = same quarter last year
-    """
     if len(rows) < 3:
         return {"valid": False}
 
@@ -201,7 +281,6 @@ def compute_revenue_block(rows: List[dict]) -> dict:
     r12 = (R1 / R2 - 1) if R1 is not None and R2 not in (None, 0) else None
     r03 = (R0 / R3 - 1) if R0 is not None and R3 not in (None, 0) else None
 
-    # Clamp extreme outliers
     r01 = clamp(r01, -0.50, 1.00)
     r12 = clamp(r12, -0.50, 1.00)
     r03 = clamp(r03, -0.50, 1.50)
@@ -232,13 +311,6 @@ def compute_revenue_block(rows: List[dict]) -> dict:
 
 
 def compute_margin_block(rows: List[dict], margin_key: str, label: str) -> dict:
-    """
-    Generic function for either operating margin or gross margin.
-
-    Example:
-    label='O' => O0, O1, O2, O3 and o01, o12, o03
-    label='G' => G0, G1, G2, G3 and g01, g12, g03
-    """
     if len(rows) < 3:
         return {"valid": False}
 
@@ -256,7 +328,6 @@ def compute_margin_block(rows: List[dict], margin_key: str, label: str) -> dict:
     d12 = (M1 - M2) if M1 is not None and M2 is not None else None
     d03 = (M0 - M3) if M0 is not None and M3 is not None else None
 
-    # Margin deltas are decimals, so 0.05 means +5 percentage points
     d01 = clamp(d01, -0.15, 0.15)
     d12 = clamp(d12, -0.15, 0.15)
     d03 = clamp(d03, -0.20, 0.20)
@@ -285,10 +356,51 @@ def compute_margin_block(rows: List[dict], margin_key: str, label: str) -> dict:
     }
 
 
-def main():
-    if not FMP_API_KEY:
-        raise RuntimeError("Missing FMP_API_KEY environment variable")
+def build_stock_object(ticker: str, rows: List[dict]) -> Tuple[dict, Optional[float], Optional[float], Optional[float], Optional[float]]:
+    stock_obj = {
+        "ticker": ticker,
+        "revenue": None,
+        "operatingMargin": None,
+        "grossMargin": None,
+        "tamScore": None,
+        "moatScore": None,
+        "operatingMarginTrendScore": None,
+        "grossMarginTrendScore": None,
+        "moatSource": None,
+        "error": None,
+    }
 
+    if len(rows) < 4:
+        stock_obj["error"] = "Not enough quarterly rows"
+        return stock_obj, None, None, None, None
+
+    revenue_block = compute_revenue_block(rows)
+    op_block = compute_margin_block(rows, "operatingMargin", "O")
+    gross_block = compute_margin_block(rows, "grossMargin", "G")
+
+    stock_obj["revenue"] = revenue_block if revenue_block.get("valid") else None
+    stock_obj["operatingMargin"] = op_block if op_block.get("valid") else None
+    stock_obj["grossMargin"] = gross_block if gross_block.get("valid") else None
+
+    tam_raw = revenue_block.get("rawScore") if revenue_block.get("valid") else None
+    op_raw = op_block.get("rawScore") if op_block.get("valid") else None
+    gross_raw = gross_block.get("rawScore") if gross_block.get("valid") else None
+
+    O0 = op_block.get("O0") if op_block.get("valid") else None
+
+    if O0 is None or O0 < 0:
+        moat_raw = gross_raw
+        moat_source = "grossMargin"
+    else:
+        moat_raw = op_raw
+        moat_source = "operatingMargin"
+
+    stock_obj["moatSource"] = moat_source
+
+    return stock_obj, tam_raw, op_raw, gross_raw, moat_raw
+
+
+def main():
     tickers = read_universe()
     print(f"Universe tickers: {len(tickers)}")
     print("First 10 tickers:", tickers[:10])
@@ -297,7 +409,7 @@ def main():
 
     payload = {
         "as_of": dt.date.today().isoformat(),
-        "source": "Financial Modeling Prep",
+        "source": "yfinance",
         "revenue_weights": REV_WEIGHTS,
         "margin_weights": MARGIN_WEIGHTS,
         "stocks": {},
@@ -311,53 +423,9 @@ def main():
     for i, ticker in enumerate(tickers, start=1):
         print(f"[{i}/{len(tickers)}] {ticker}")
 
-        stock_obj = {
-            "ticker": ticker,
-            "revenue": None,
-            "operatingMargin": None,
-            "grossMargin": None,
-            "tamScore": None,
-            "moatScore": None,
-            "operatingMarginTrendScore": None,
-            "grossMarginTrendScore": None,
-            "moatSource": None,
-            "error": None,
-        }
-
         try:
-            rows = fetch_income_statement_quarterly(ticker)
-            rows = normalize_rows(rows)
-
-            if len(rows) < 4:
-                stock_obj["error"] = "Not enough quarterly rows"
-                payload["stocks"][ticker] = stock_obj
-                time.sleep(REQUEST_SLEEP)
-                continue
-
-            revenue_block = compute_revenue_block(rows)
-            op_block = compute_margin_block(rows, "operatingMargin", "O")
-            gross_block = compute_margin_block(rows, "grossMargin", "G")
-
-            stock_obj["revenue"] = revenue_block if revenue_block.get("valid") else None
-            stock_obj["operatingMargin"] = op_block if op_block.get("valid") else None
-            stock_obj["grossMargin"] = gross_block if gross_block.get("valid") else None
-
-            tam_raw = revenue_block.get("rawScore") if revenue_block.get("valid") else None
-            op_raw = op_block.get("rawScore") if op_block.get("valid") else None
-            gross_raw = gross_block.get("rawScore") if gross_block.get("valid") else None
-
-            O0 = op_block.get("O0") if op_block.get("valid") else None
-
-            # Your fallback rule:
-            # if most recent operating margin is negative (or missing), use gross margin trend for MOAT
-            if O0 is None or O0 < 0:
-                moat_raw = gross_raw
-                moat_source = "grossMargin"
-            else:
-                moat_raw = op_raw
-                moat_source = "operatingMargin"
-
-            stock_obj["moatSource"] = moat_source
+            rows = extract_quarterly_rows(ticker)
+            stock_obj, tam_raw, op_raw, gross_raw, moat_raw = build_stock_object(ticker, rows)
 
             tam_raw_map[ticker] = tam_raw
             op_raw_map[ticker] = op_raw
@@ -365,7 +433,18 @@ def main():
             moat_raw_map[ticker] = moat_raw
 
         except Exception as e:
-            stock_obj["error"] = str(e)
+            stock_obj = {
+                "ticker": ticker,
+                "revenue": None,
+                "operatingMargin": None,
+                "grossMargin": None,
+                "tamScore": None,
+                "moatScore": None,
+                "operatingMarginTrendScore": None,
+                "grossMarginTrendScore": None,
+                "moatSource": None,
+                "error": str(e),
+            }
             tam_raw_map[ticker] = None
             op_raw_map[ticker] = None
             gross_raw_map[ticker] = None
