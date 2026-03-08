@@ -50,6 +50,14 @@ jobs:
             echo "ERROR: scripts/build_top_correlations.py is missing"
             exit 1
           fi
+          echo ""
+          echo "Does fundamental trends script exist?"
+          if [ -f scripts/build_fundamental_trends.py ]; then
+            echo "OK: scripts/build_fundamental_trends.py exists"
+          else
+            echo "ERROR: scripts/build_fundamental_trends.py is missing"
+            exit 1
+          fi
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -59,7 +67,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pandas numpy yfinance scipy
+          pip install pandas numpy yfinance scipy requests
 
       - name: Run return matrix script
         run: |
@@ -102,6 +110,16 @@ jobs:
           ls -lah public || true
           ls -lah public/data || true
 
+      - name: Build fundamental trends
+        env:
+          FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+        run: |
+          python scripts/build_fundamental_trends.py
+          echo ""
+          echo "After fundamental trends build, public/ tree:"
+          ls -lah public || true
+          ls -lah public/data || true
+
       - name: Verify outputs
         run: |
           ls -lah data || true
@@ -116,6 +134,7 @@ jobs:
           test -f public/data/expected_returns.json
           test -f public/data/dividends.json
           test -f public/data/sectors.json
+          test -f public/data/fundamental_trends.json
           echo "All outputs exist."
 
       - name: Upload outputs
@@ -132,6 +151,7 @@ jobs:
             public/data/expected_returns.json
             public/data/dividends.json
             public/data/sectors.json
+            public/data/fundamental_trends.json
           if-no-files-found: error
 
       - name: Create PR
@@ -150,6 +170,9 @@ jobs:
             public/data/top_correlations.json
             public/data/dividends.json
             public/data/sectors.json
+            public/data/fundamental_trends.json
+
             public/data/vols.json
             public/data/covariance_matrix.csv
             public/data/expected_returns.json
+            public/data/fundamental_trends.json
