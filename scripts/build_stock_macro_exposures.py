@@ -21,24 +21,6 @@ Metrics included per dimension:
 - r_squared
 - signed score (-100 to 100)
 - normalized score (0 to 100)
-
-Interpretation:
-- correlation: directional co-movement with the macro dimension
-- beta: sensitivity of the asset's daily return to the dimension
-- r_squared: explanatory strength from a 1-factor regression
-- signed score: centered exposure score, useful for ranking positive vs negative exposure
-- normalized score: easier frontend display score from 0 to 100
-
-This script assumes:
-- daily_returns.csv has a date column and one column per ticker
-  OR a pandas-written unnamed first index column
-- macro_dimension_scores.csv has:
-    date
-    inflation_score
-    growth_score
-    liquidity_score
-
-If your filenames or column names differ, adjust CONFIG below.
 """
 
 from __future__ import annotations
@@ -79,15 +61,12 @@ MACRO_SCORE_COLS = {
     "liquidity": "liquidity_score",
 }
 
-# Minimum overlapping observations required to compute an exposure
 MIN_OBS = 40
 
-# Optional winsorization of daily returns to reduce extreme outlier impact
 WINSORIZE_RETURNS = True
 RETURN_LOWER_Q = 0.01
 RETURN_UPPER_Q = 0.99
 
-# Score scaling
 SIGNED_SCORE_CLIP = 100.0
 
 
@@ -201,14 +180,9 @@ def normalize_cross_section(series: pd.Series) -> pd.Series:
 def signed_score_from_beta_corr(beta: pd.Series, corr: pd.Series) -> pd.Series:
     """
     Blend beta magnitude and directional correlation into a signed score.
-
-    Practical implementation:
-        signed_raw = beta_rank_centered * 0.65 + corr * 0.35
-
-    Then rescaled into [-100, 100].
     """
     beta_rank = beta.rank(pct=True)
-    beta_centered = (beta_rank - 0.5) * 2.0  # approx -1..1
+    beta_centered = (beta_rank - 0.5) * 2.0
 
     corr_filled = corr.copy().clip(-1, 1)
 
@@ -225,10 +199,24 @@ def clean_numeric_columns(df: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
-def round_or_none(x, n=6):
+def clean_json_value(x, digits=None):
+    """
+    Convert pandas/numpy NaN to None so output is valid JSON.
+    Optionally round floats.
+    """
     if pd.isna(x):
         return None
-    return round(float(x), n)
+
+    if isinstance(x, (np.integer, int)):
+        return int(x)
+
+    if isinstance(x, (np.floating, float)):
+        val = float(x)
+        if digits is not None:
+            val = round(val, digits)
+        return val
+
+    return x
 
 
 # =========================================================
@@ -257,7 +245,6 @@ def main():
     print(f"daily_returns shape: {daily_returns.shape}")
     print(f"macro_scores shape: {macro_scores.shape}")
 
-    # Keep only the macro columns we need
     needed_macro_cols = [MACRO_SCORE_COLS[d] for d in MACRO_DIMENSIONS]
     missing_macro_cols = [c for c in needed_macro_cols if c not in macro_scores.columns]
     if missing_macro_cols:
@@ -293,7 +280,6 @@ def main():
     daily_returns = daily_returns.loc[common_dates].copy()
     macro_scores = macro_scores.loc[common_dates].copy()
 
-    # Remove columns that are fully missing after alignment
     daily_returns = daily_returns.dropna(axis=1, how="all")
 
     # -----------------------------
@@ -334,13 +320,9 @@ def main():
             asset_ret = tmp[ticker]
             factor = tmp[factor_col]
 
-            corr = safe_corr(asset_ret, factor)
-            beta = safe_beta(asset_ret, factor)
-            r2 = safe_r_squared(asset_ret, factor)
-
-            row[f"{dim}_corr"] = corr
-            row[f"{dim}_beta"] = beta
-            row[f"{dim}_r2"] = r2
+            row[f"{dim}_corr"] = safe_corr(asset_ret, factor)
+            row[f"{dim}_beta"] = safe_beta(asset_ret, factor)
+            row[f"{dim}_r2"] = safe_r_squared(asset_ret, factor)
 
         rows.append(row)
 
@@ -355,7 +337,6 @@ def main():
     for dim in MACRO_DIMENSIONS:
         beta_col = f"{dim}_beta"
         corr_col = f"{dim}_corr"
-
         signed_col = f"{dim}_signed_score"
         norm_col = f"{dim}_score"
 
@@ -363,7 +344,6 @@ def main():
             exposures[beta_col],
             exposures[corr_col],
         )
-
         exposures[norm_col] = normalize_cross_section(exposures[signed_col])
 
     # -----------------------------
@@ -412,23 +392,23 @@ def main():
     json_rows = []
     for _, r in exposures.iterrows():
         item = {
-            "ticker": r["ticker"],
-            "n_obs_total": int(r["n_obs_total"]) if pd.notna(r["n_obs_total"]) else None,
-            "primary_macro_dimension": r.get("primary_macro_dimension"),
+            "ticker": clean_json_value(r.get("ticker")),
+            "n_obs_total": clean_json_value(r.get("n_obs_total")),
+            "primary_macro_dimension": clean_json_value(r.get("primary_macro_dimension")),
         }
 
         for dim in MACRO_DIMENSIONS:
-            item[f"{dim}_n_obs"] = int(r[f"{dim}_n_obs"]) if pd.notna(r[f"{dim}_n_obs"]) else None
-            item[f"{dim}_corr"] = round_or_none(r[f"{dim}_corr"], 6)
-            item[f"{dim}_beta"] = round_or_none(r[f"{dim}_beta"], 6)
-            item[f"{dim}_r2"] = round_or_none(r[f"{dim}_r2"], 6)
-            item[f"{dim}_signed_score"] = round_or_none(r[f"{dim}_signed_score"], 4)
-            item[f"{dim}_score"] = round_or_none(r[f"{dim}_score"], 2)
+            item[f"{dim}_n_obs"] = clean_json_value(r.get(f"{dim}_n_obs"))
+            item[f"{dim}_corr"] = clean_json_value(r.get(f"{dim}_corr"), 6)
+            item[f"{dim}_beta"] = clean_json_value(r.get(f"{dim}_beta"), 6)
+            item[f"{dim}_r2"] = clean_json_value(r.get(f"{dim}_r2"), 6)
+            item[f"{dim}_signed_score"] = clean_json_value(r.get(f"{dim}_signed_score"), 4)
+            item[f"{dim}_score"] = clean_json_value(r.get(f"{dim}_score"), 2)
 
         json_rows.append(item)
 
     with open(OUTPUT_JSON, "w", encoding="utf-8") as f:
-        json.dump(json_rows, f, indent=2)
+        json.dump(json_rows, f, indent=2, allow_nan=False)
 
     print("Done.")
     print(f"Saved CSV:  {OUTPUT_CSV}")
