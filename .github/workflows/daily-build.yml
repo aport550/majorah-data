@@ -35,6 +35,7 @@ jobs:
           echo "Scripts:"
           ls -lah scripts || true
           echo ""
+
           echo "Does clustering script exist?"
           if [ -f scripts/build_clusters.py ]; then
             echo "OK: scripts/build_clusters.py exists"
@@ -43,6 +44,7 @@ jobs:
             exit 1
           fi
           echo ""
+
           echo "Does top correlations script exist?"
           if [ -f scripts/build_top_correlations.py ]; then
             echo "OK: scripts/build_top_correlations.py exists"
@@ -51,11 +53,30 @@ jobs:
             exit 1
           fi
           echo ""
+
           echo "Does fundamental trends script exist?"
           if [ -f scripts/build_fundamental_trends.py ]; then
             echo "OK: scripts/build_fundamental_trends.py exists"
           else
             echo "ERROR: scripts/build_fundamental_trends.py is missing"
+            exit 1
+          fi
+          echo ""
+
+          echo "Does macro dimensions script exist?"
+          if [ -f scripts/build_macro_dimensions.py ]; then
+            echo "OK: scripts/build_macro_dimensions.py exists"
+          else
+            echo "ERROR: scripts/build_macro_dimensions.py is missing"
+            exit 1
+          fi
+          echo ""
+
+          echo "Does stock macro exposures script exist?"
+          if [ -f scripts/build_stock_macro_exposures.py ]; then
+            echo "OK: scripts/build_stock_macro_exposures.py exists"
+          else
+            echo "ERROR: scripts/build_stock_macro_exposures.py is missing"
             exit 1
           fi
 
@@ -72,9 +93,26 @@ jobs:
       - name: Run return matrix script
         run: |
           mkdir -p data
+          mkdir -p public/data
           python scripts/build_return_matrix.py
           echo ""
           echo "After return matrix, public/data tree:"
+          ls -lah public || true
+          ls -lah public/data || true
+
+      - name: Build macro dimensions
+        run: |
+          python scripts/build_macro_dimensions.py
+          echo ""
+          echo "After macro dimensions, public/data tree:"
+          ls -lah public || true
+          ls -lah public/data || true
+
+      - name: Build stock macro exposures
+        run: |
+          python scripts/build_stock_macro_exposures.py
+          echo ""
+          echo "After stock macro exposures, public/data tree:"
           ls -lah public || true
           ls -lah public/data || true
 
@@ -123,8 +161,12 @@ jobs:
           ls -lah data || true
           ls -lah public || true
           ls -lah public/data || true
+
           test -f data/daily_returns.csv
           test -f data/correlation_matrix.csv
+          test -f data/macro_dimension_scores.csv
+          test -f data/stock_macro_exposures.csv
+
           test -f public/data/clusters.json
           test -f public/data/top_correlations.json
           test -f public/data/vols.json
@@ -133,6 +175,9 @@ jobs:
           test -f public/data/dividends.json
           test -f public/data/sectors.json
           test -f public/data/fundamental_trends.json
+          test -f public/data/macro_dimension_scores.json
+          test -f public/data/stock_macro_exposures.json
+
           echo "All outputs exist."
 
       - name: Upload outputs
@@ -142,6 +187,8 @@ jobs:
           path: |
             data/daily_returns.csv
             data/correlation_matrix.csv
+            data/macro_dimension_scores.csv
+            data/stock_macro_exposures.csv
             public/data/clusters.json
             public/data/top_correlations.json
             public/data/vols.json
@@ -150,6 +197,8 @@ jobs:
             public/data/dividends.json
             public/data/sectors.json
             public/data/fundamental_trends.json
+            public/data/macro_dimension_scores.json
+            public/data/stock_macro_exposures.json
           if-no-files-found: error
 
       - name: Create PR
@@ -164,13 +213,15 @@ jobs:
           add-paths: |
             data/daily_returns.csv
             data/correlation_matrix.csv
+            data/macro_dimension_scores.csv
+            data/stock_macro_exposures.csv
             public/data/clusters.json
             public/data/top_correlations.json
             public/data/dividends.json
             public/data/sectors.json
             public/data/fundamental_trends.json
-
             public/data/vols.json
             public/data/covariance_matrix.csv
             public/data/expected_returns.json
-            public/data/fundamental_trends.json
+            public/data/macro_dimension_scores.json
+            public/data/stock_macro_exposures.json
