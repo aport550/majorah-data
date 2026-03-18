@@ -31,6 +31,7 @@ Interpretation:
 
 This script assumes:
 - daily_returns.csv has a date column and one column per ticker
+  OR a pandas-written unnamed first index column
 - macro_dimension_scores.csv has:
     date
     inflation_score
@@ -43,9 +44,7 @@ If your filenames or column names differ, adjust CONFIG below.
 from __future__ import annotations
 
 import json
-import math
 from pathlib import Path
-from typing import Dict, List, Tuple
 
 import numpy as np
 import pandas as pd
@@ -97,15 +96,41 @@ SIGNED_SCORE_CLIP = 100.0
 # =========================================================
 
 def read_csv_with_date_index(path: Path, date_col: str = DATE_COL) -> pd.DataFrame:
+    """
+    Read a CSV and set a date index robustly.
+
+    Supported cases:
+    - explicit 'date' column
+    - explicit 'Date' column
+    - pandas-saved unnamed first index column, e.g. 'Unnamed: 0'
+    """
     df = pd.read_csv(path)
-    if date_col not in df.columns:
-        # fallback for common uppercase variant
-        if "Date" in df.columns:
-            date_col = "Date"
-        else:
-            raise ValueError(f"{path} is missing a '{DATE_COL}' or 'Date' column.")
-    df[date_col] = pd.to_datetime(df[date_col])
-    df = df.sort_values(date_col).set_index(date_col)
+    print(f"Reading {path}")
+    print(f"Columns found: {list(df.columns)}")
+
+    chosen_date_col = None
+
+    if date_col in df.columns:
+        chosen_date_col = date_col
+    elif "Date" in df.columns:
+        chosen_date_col = "Date"
+    elif len(df.columns) > 0 and str(df.columns[0]).startswith("Unnamed"):
+        chosen_date_col = df.columns[0]
+
+    if chosen_date_col is None:
+        raise ValueError(
+            f"{path} is missing a '{DATE_COL}' or 'Date' column, "
+            f"and first column is not an unnamed date index. "
+            f"Found columns: {list(df.columns)}"
+        )
+
+    df[chosen_date_col] = pd.to_datetime(df[chosen_date_col], errors="coerce")
+    df = df.dropna(subset=[chosen_date_col])
+    df = df.sort_values(chosen_date_col).set_index(chosen_date_col)
+
+    # Remove leftover unnamed columns after setting index
+    df = df.loc[:, [c for c in df.columns if not str(c).startswith("Unnamed")]]
+
     return df
 
 
@@ -176,22 +201,16 @@ def normalize_cross_section(series: pd.Series) -> pd.Series:
 def signed_score_from_beta_corr(beta: pd.Series, corr: pd.Series) -> pd.Series:
     """
     Blend beta magnitude and directional correlation into a signed score.
-    This keeps sign direction while rewarding consistency + sensitivity.
-
-    Formula:
-        signed_raw = sign(beta) * sqrt(abs(beta_z * corr_zlike))
 
     Practical implementation:
         signed_raw = beta_rank_centered * 0.65 + corr * 0.35
 
     Then rescaled into [-100, 100].
     """
-    # beta gets cross-sectional rank centered at 0
     beta_rank = beta.rank(pct=True)
-    beta_centered = (beta_rank - 0.5) * 2.0  # -1..1 approx
+    beta_centered = (beta_rank - 0.5) * 2.0  # approx -1..1
 
-    corr_filled = corr.copy()
-    corr_filled = corr_filled.clip(-1, 1)
+    corr_filled = corr.copy().clip(-1, 1)
 
     signed_raw = 0.65 * beta_centered + 0.35 * corr_filled
     signed_score = (signed_raw * 100.0).clip(-SIGNED_SCORE_CLIP, SIGNED_SCORE_CLIP)
@@ -217,6 +236,7 @@ def round_or_none(x, n=6):
 # =========================================================
 
 def main():
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
     PUBLIC_DATA_DIR.mkdir(parents=True, exist_ok=True)
 
     if not INPUT_DAILY_RETURNS.exists():
@@ -234,12 +254,16 @@ def main():
     daily_returns = clean_numeric_columns(daily_returns)
     macro_scores = clean_numeric_columns(macro_scores)
 
+    print(f"daily_returns shape: {daily_returns.shape}")
+    print(f"macro_scores shape: {macro_scores.shape}")
+
     # Keep only the macro columns we need
     needed_macro_cols = [MACRO_SCORE_COLS[d] for d in MACRO_DIMENSIONS]
     missing_macro_cols = [c for c in needed_macro_cols if c not in macro_scores.columns]
     if missing_macro_cols:
         raise ValueError(
-            f"macro_dimension_scores.csv is missing required columns: {missing_macro_cols}"
+            f"macro_dimension_scores.csv is missing required columns: {missing_macro_cols}. "
+            f"Found columns: {list(macro_scores.columns)}"
         )
 
     macro_scores = macro_scores[needed_macro_cols].copy()
@@ -259,6 +283,8 @@ def main():
     common_dates = daily_returns.index.intersection(macro_scores.index)
     common_dates = common_dates.sort_values()
 
+    print(f"Overlapping dates: {len(common_dates)}")
+
     if len(common_dates) < MIN_OBS:
         raise ValueError(
             f"Not enough overlapping dates between returns and macro scores: {len(common_dates)}"
@@ -266,6 +292,9 @@ def main():
 
     daily_returns = daily_returns.loc[common_dates].copy()
     macro_scores = macro_scores.loc[common_dates].copy()
+
+    # Remove columns that are fully missing after alignment
+    daily_returns = daily_returns.dropna(axis=1, how="all")
 
     # -----------------------------
     # Compute exposures
@@ -340,10 +369,7 @@ def main():
     # -----------------------------
     # Dominant dimension labels
     # -----------------------------
-    abs_signed_cols = [f"{dim}_signed_score" for dim in MACRO_DIMENSIONS]
-    abs_df = exposures[["ticker"] + abs_signed_cols].copy()
-
-    def get_top_dimension(row: pd.Series) -> str | None:
+    def get_top_dimension(row: pd.Series):
         vals = {
             dim: abs(row.get(f"{dim}_signed_score", np.nan))
             for dim in MACRO_DIMENSIONS
