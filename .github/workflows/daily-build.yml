@@ -36,6 +36,15 @@ jobs:
           ls -lah scripts || true
           echo ""
 
+          echo "Does return matrix script exist?"
+          if [ -f scripts/build_return_matrix.py ]; then
+            echo "OK: scripts/build_return_matrix.py exists"
+          else
+            echo "ERROR: scripts/build_return_matrix.py is missing"
+            exit 1
+          fi
+          echo ""
+
           echo "Does clustering script exist?"
           if [ -f scripts/build_clusters.py ]; then
             echo "OK: scripts/build_clusters.py exists"
@@ -59,6 +68,24 @@ jobs:
             echo "OK: scripts/build_top_correlations.py exists"
           else
             echo "ERROR: scripts/build_top_correlations.py is missing"
+            exit 1
+          fi
+          echo ""
+
+          echo "Does dividends script exist?"
+          if [ -f scripts/build_dividends.py ]; then
+            echo "OK: scripts/build_dividends.py exists"
+          else
+            echo "ERROR: scripts/build_dividends.py is missing"
+            exit 1
+          fi
+          echo ""
+
+          echo "Does sectors script exist?"
+          if [ -f scripts/build_sectors.py ]; then
+            echo "OK: scripts/build_sectors.py exists"
+          else
+            echo "ERROR: scripts/build_sectors.py is missing"
             exit 1
           fi
           echo ""
@@ -99,15 +126,21 @@ jobs:
           python -m pip install --upgrade pip
           pip install pandas numpy yfinance scipy requests
 
-      - name: Run return matrix script
+      - name: Create output directories
         run: |
           mkdir -p data
           mkdir -p public/data
+
+      - name: Run return matrix script
+        run: |
           python scripts/build_return_matrix.py
           echo ""
           echo "After return matrix, public/data tree:"
           ls -lah public || true
           ls -lah public/data || true
+          echo ""
+          echo "Data tree:"
+          ls -lah data || true
 
       - name: Build macro dimensions
         run: |
@@ -129,15 +162,39 @@ jobs:
         run: |
           python scripts/build_clusters.py
           echo ""
-          echo "After clusters, public/ tree:"
+          echo "After clusters, public/data tree:"
           ls -lah public || true
           ls -lah public/data || true
+          echo ""
+          echo "Cluster files:"
+          ls -lah data/clusters.json || true
+          ls -lah data/stock_clusters.json || true
+          ls -lah public/data/clusters.json || true
+          ls -lah public/data/stock_clusters.json || true
+
+      - name: Debug clusters JSON preview
+        run: |
+          echo "Preview data/clusters.json"
+          if [ -f data/clusters.json ]; then
+            head -c 1000 data/clusters.json
+            echo ""
+          else
+            echo "data/clusters.json not found"
+          fi
+          echo ""
+          echo "Preview public/data/clusters.json"
+          if [ -f public/data/clusters.json ]; then
+            head -c 1000 public/data/clusters.json
+            echo ""
+          else
+            echo "public/data/clusters.json not found"
+          fi
 
       - name: Build return decomposition
         run: |
           python scripts/build_return_decomposition.py
           echo ""
-          echo "After return decomposition, public/ tree:"
+          echo "After return decomposition, public/data tree:"
           ls -lah public || true
           ls -lah public/data || true
           echo ""
@@ -146,12 +203,22 @@ jobs:
           ls -lah public/data/return_decomposition.json || true
           ls -lah public/data/return_decomposition_by_ticker.json || true
           ls -lah public/data/return_decomposition_summary.json || true
+          echo ""
+          echo "Preview return_decomposition_by_ticker.json"
+          if [ -f public/data/return_decomposition_by_ticker.json ]; then
+            wc -c public/data/return_decomposition_by_ticker.json
+            head -c 1000 public/data/return_decomposition_by_ticker.json
+            echo ""
+          else
+            echo "public/data/return_decomposition_by_ticker.json not found"
+            exit 1
+          fi
 
       - name: Build top correlations
         run: |
           python scripts/build_top_correlations.py
           echo ""
-          echo "After top correlations, public/ tree:"
+          echo "After top correlations, public/data tree:"
           ls -lah public || true
           ls -lah public/data || true
 
@@ -159,15 +226,15 @@ jobs:
         run: |
           python scripts/build_dividends.py
           echo ""
-          echo "After dividends build, public/ tree:"
+          echo "After dividends build, public/data tree:"
           ls -lah public || true
           ls -lah public/data || true
-          
+
       - name: Build sectors
         run: |
           python scripts/build_sectors.py
           echo ""
-          echo "After sectors build, public/ tree:"
+          echo "After sectors build, public/data tree:"
           ls -lah public || true
           ls -lah public/data || true
 
@@ -175,7 +242,7 @@ jobs:
         run: |
           python scripts/build_fundamental_trends.py
           echo ""
-          echo "After fundamental trends build, public/ tree:"
+          echo "After fundamental trends build, public/data tree:"
           ls -lah public || true
           ls -lah public/data || true
 
@@ -207,6 +274,24 @@ jobs:
 
           echo "All outputs exist."
 
+      - name: Show git status and diff
+        run: |
+          echo "Git status:"
+          git status --short
+          echo ""
+          echo "Git diff stat:"
+          git diff --stat || true
+          echo ""
+          echo "Tracked decomposition files:"
+          git ls-files public/data/return_decomposition.json || true
+          git ls-files public/data/return_decomposition_by_ticker.json || true
+          git ls-files public/data/return_decomposition_summary.json || true
+          echo ""
+          echo "If files exist locally:"
+          ls -lah public/data/return_decomposition.json || true
+          ls -lah public/data/return_decomposition_by_ticker.json || true
+          ls -lah public/data/return_decomposition_summary.json || true
+
       - name: Upload outputs
         uses: actions/upload-artifact@v4
         with:
@@ -232,15 +317,24 @@ jobs:
             public/data/return_decomposition_summary.json
           if-no-files-found: error
 
-      - name: Create PR
-        continue-on-error: true
+      - name: Create or update PR
+        id: cpr
         uses: peter-evans/create-pull-request@v6
         with:
           branch: auto/return-matrix
           base: main
           title: Auto update return matrix
           commit-message: Auto update return matrix
-          body: Automated update of generated data files
+          body: |
+            Automated update of generated data files.
+
+            This PR includes:
+            - return matrix outputs
+            - macro dimension outputs
+            - stock macro exposures
+            - cluster outputs
+            - return decomposition outputs
+            - supporting JSON/CSV artifacts
           add-paths: |
             data/daily_returns.csv
             data/correlation_matrix.csv
@@ -260,3 +354,29 @@ jobs:
             public/data/return_decomposition.json
             public/data/return_decomposition_by_ticker.json
             public/data/return_decomposition_summary.json
+          delete-branch: false
+
+      - name: Show PR result
+        run: |
+          echo "pull-request-number: ${{ steps.cpr.outputs.pull-request-number }}"
+          echo "pull-request-url: ${{ steps.cpr.outputs.pull-request-url }}"
+          echo "pull-request-operation: ${{ steps.cpr.outputs.pull-request-operation }}"
+
+      - name: Fail if no PR and no changes
+        run: |
+          PR_NUMBER="${{ steps.cpr.outputs.pull-request-number }}"
+          PR_OPERATION="${{ steps.cpr.outputs.pull-request-operation }}"
+
+          echo "PR number: $PR_NUMBER"
+          echo "PR operation: $PR_OPERATION"
+
+          if [ -z "$PR_NUMBER" ] && [ "$PR_OPERATION" != "updated" ] && [ "$PR_OPERATION" != "created" ]; then
+            echo "No PR was created or updated."
+            echo "This usually means either:"
+            echo "1) there were no file changes"
+            echo "2) PR creation failed"
+            echo ""
+            echo "Git status for debugging:"
+            git status --short
+            exit 1
+          fi
