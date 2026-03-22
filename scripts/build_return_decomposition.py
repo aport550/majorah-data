@@ -42,23 +42,6 @@ Cluster input (first existing file found will be used):
 - public/data/stock_clusters.csv
 - public/data/clusters.csv
 
-Supported cluster formats
--------------------------
-JSON examples:
-1) {"AAPL": 0, "MSFT": 0, "XOM": 1}
-2) {"0": ["AAPL", "MSFT"], "1": ["XOM", "CVX"]}
-3) {"clusters": {"0": ["AAPL", "MSFT"], "1": ["XOM", "CVX"]}}
-4) [{"ticker": "AAPL", "cluster": 0}, {"ticker": "MSFT", "cluster": 0}]
-
-CSV examples:
-1) ticker,cluster
-   AAPL,0
-   MSFT,0
-
-2) ticker,cluster_id
-   AAPL,0
-   MSFT,0
-
 Outputs
 -------
 - data/return_decomposition.csv
@@ -172,71 +155,141 @@ def read_daily_returns(path: Path) -> pd.DataFrame:
     return df
 
 
+def _extract_cluster_id(row: dict, fallback: object = None) -> Optional[str]:
+    for key in ("cluster", "cluster_id", "group", "label", "id", "name"):
+        if key in row and row[key] is not None:
+            return str(row[key])
+    if fallback is not None:
+        return str(fallback)
+    return None
+
+
+def _extract_members(row: dict) -> List[str]:
+    for key in ("members", "tickers", "symbols", "stocks", "items", "constituents"):
+        if key in row and isinstance(row[key], list):
+            return [normalize_ticker(x) for x in row[key] if normalize_ticker(x)]
+    return []
+
+
 def parse_json_cluster_mapping(data: object) -> Dict[str, str]:
+    """
+    Returns ticker -> cluster_id mapping.
+
+    Supported examples:
+    1) {"AAPL": 0, "MSFT": 0}
+    2) {"0": ["AAPL", "MSFT"], "1": ["XOM", "CVX"]}
+    3) {"clusters": {"0": ["AAPL", "MSFT"], "1": ["XOM", "CVX"]}}
+    4) [{"ticker": "AAPL", "cluster": 0}, {"ticker": "MSFT", "cluster": 0}]
+    5) {"clusters": [{"cluster_id": 0, "members": ["AAPL", "MSFT"]}, ...]}
+    6) {"clusters": {"0": {"members": ["AAPL", "MSFT"]}, "1": {"members": ["XOM"]}}}
+    """
     mapping: Dict[str, str] = {}
 
     if isinstance(data, dict):
-        maybe_keys = list(data.keys())
+        # Case 1: {"AAPL": 0, "MSFT": 0}
+        scalar_mapping_candidate = {}
+        scalar_like = True
+        for k, v in data.items():
+            if isinstance(v, (str, int, float)) and normalize_ticker(k):
+                scalar_mapping_candidate[normalize_ticker(k)] = str(v)
+            else:
+                scalar_like = False
+                break
+        if scalar_like and scalar_mapping_candidate:
+            return scalar_mapping_candidate
 
-        # {"AAPL": 0, "MSFT": 0}
-        if maybe_keys and all(isinstance(k, str) for k in maybe_keys):
-            scalar_value_count = sum(1 for v in data.values() if isinstance(v, (str, int, float)))
-            if scalar_value_count == len(data):
-                plausible = {}
-                for ticker, cluster_id in data.items():
-                    t = normalize_ticker(ticker)
-                    if t:
-                        plausible[t] = str(cluster_id)
-                if plausible:
-                    return plausible
-
-        # {"0": ["AAPL", "MSFT"], "1": ["XOM", "CVX"]}
-        if data and all(isinstance(v, list) for v in data.values()):
+        # Case 2: {"0": ["AAPL", "MSFT"], "1": ["XOM", "CVX"]}
+        list_mapping_candidate = {}
+        all_values_are_lists = len(data) > 0 and all(isinstance(v, list) for v in data.values())
+        if all_values_are_lists:
             for cluster_id, members in data.items():
                 for m in members:
                     t = normalize_ticker(m)
                     if t:
-                        mapping[t] = str(cluster_id)
-            if mapping:
-                return mapping
+                        list_mapping_candidate[t] = str(cluster_id)
+            if list_mapping_candidate:
+                return list_mapping_candidate
 
-        # {"clusters": {...}}
-        for key in ("clusters", "cluster_map", "mapping"):
+        # Case 3: nested wrapper keys
+        for key in ("clusters", "cluster_map", "mapping", "data", "results"):
             if key in data:
-                return parse_json_cluster_mapping(data[key])
+                try:
+                    nested = parse_json_cluster_mapping(data[key])
+                    if nested:
+                        return nested
+                except ValueError:
+                    pass
 
-        # {"AAPL": {"cluster": 0}}
-        possible = {}
-        ok = True
+        # Case 4: {"AAPL": {"cluster": 0}}
+        nested_ticker_mapping = {}
+        ticker_style = True
         for k, v in data.items():
             if not isinstance(v, dict):
-                ok = False
+                ticker_style = False
                 break
-            cluster_id = v.get("cluster", v.get("cluster_id", v.get("group", v.get("label"))))
-            if cluster_id is None:
-                ok = False
-                break
+            cluster_id = _extract_cluster_id(v)
             t = normalize_ticker(k)
-            if t:
-                possible[t] = str(cluster_id)
-        if ok and possible:
-            return possible
+            if not t or cluster_id is None:
+                ticker_style = False
+                break
+            nested_ticker_mapping[t] = cluster_id
+        if ticker_style and nested_ticker_mapping:
+            return nested_ticker_mapping
 
-    # [{"ticker":"AAPL","cluster":0}]
+        # Case 5: {"0": {"members": ["AAPL", "MSFT"]}}
+        cluster_object_mapping = {}
+        cluster_object_style = True
+        for k, v in data.items():
+            if not isinstance(v, dict):
+                cluster_object_style = False
+                break
+            members = _extract_members(v)
+            if not members:
+                cluster_object_style = False
+                break
+            cluster_id = _extract_cluster_id(v, fallback=k)
+            for t in members:
+                cluster_object_mapping[t] = cluster_id
+        if cluster_object_style and cluster_object_mapping:
+            return cluster_object_mapping
+
+    # Case 6: [{"ticker":"AAPL","cluster":0}]
     if isinstance(data, list):
-        possible = {}
+        row_mapping = {}
+        row_style_ok = True
+        saw_any_row_mapping = False
+
+        for row in data:
+            if not isinstance(row, dict):
+                row_style_ok = False
+                break
+
+            # Row-per-ticker style
+            ticker = row.get("ticker", row.get("symbol", row.get("stock", row.get("name"))))
+            cluster_id = _extract_cluster_id(row)
+            if ticker is not None and cluster_id is not None:
+                t = normalize_ticker(ticker)
+                if t:
+                    row_mapping[t] = cluster_id
+                    saw_any_row_mapping = True
+                    continue
+
+        if row_style_ok and saw_any_row_mapping and row_mapping:
+            return row_mapping
+
+        # Case 7: [{"cluster_id":0,"members":["AAPL","MSFT"]}, ...]
+        cluster_list_mapping = {}
         for row in data:
             if not isinstance(row, dict):
                 continue
-            ticker = row.get("ticker", row.get("symbol", row.get("name")))
-            cluster_id = row.get("cluster", row.get("cluster_id", row.get("group", row.get("label"))))
-            if ticker is None or cluster_id is None:
+            cluster_id = _extract_cluster_id(row)
+            members = _extract_members(row)
+            if cluster_id is None or not members:
                 continue
-            t = normalize_ticker(ticker)
-            if t:
-                possible[t] = str(cluster_id)
-        if possible:
-            return possible
+            for t in members:
+                cluster_list_mapping[t] = cluster_id
+        if cluster_list_mapping:
+            return cluster_list_mapping
 
     raise ValueError("Unsupported JSON cluster format.")
 
@@ -268,21 +321,44 @@ def read_cluster_mapping(path: Path) -> Dict[str, str]:
                 cluster_col = lower_map[candidate]
                 break
 
-        if ticker_col is None or cluster_col is None:
-            raise ValueError(
-                f"CSV cluster file {path} must contain ticker/symbol and cluster/cluster_id columns."
-            )
+        # row-per-cluster CSV with members/tickers column
+        members_col = None
+        for candidate in ("members", "tickers", "symbols", "stocks", "items", "constituents"):
+            if candidate in lower_map:
+                members_col = lower_map[candidate]
+                break
 
-        mapping = {}
-        for _, row in df.iterrows():
-            ticker = normalize_ticker(row[ticker_col])
-            cluster_id = row[cluster_col]
-            if ticker and pd.notna(cluster_id):
-                mapping[ticker] = str(cluster_id)
+        if ticker_col is not None and cluster_col is not None:
+            mapping = {}
+            for _, row in df.iterrows():
+                ticker = normalize_ticker(row[ticker_col])
+                cluster_id = row[cluster_col]
+                if ticker and pd.notna(cluster_id):
+                    mapping[ticker] = str(cluster_id)
+            if mapping:
+                return mapping
 
-        if not mapping:
-            raise ValueError(f"No valid cluster rows found in {path}")
-        return mapping
+        if cluster_col is not None and members_col is not None:
+            mapping = {}
+            for _, row in df.iterrows():
+                cluster_id = row[cluster_col]
+                if pd.isna(cluster_id):
+                    continue
+                raw_members = str(row[members_col] or "")
+                split_members = [
+                    normalize_ticker(x)
+                    for x in raw_members.replace("|", ",").replace(";", ",").split(",")
+                ]
+                split_members = [x for x in split_members if x]
+                for t in split_members:
+                    mapping[t] = str(cluster_id)
+            if mapping:
+                return mapping
+
+        raise ValueError(
+            f"CSV cluster file {path} must contain either "
+            f"(ticker/symbol + cluster/cluster_id) or (cluster/cluster_id + members/tickers)."
+        )
 
     raise ValueError(f"Unsupported cluster file type: {path.suffix}")
 
@@ -301,10 +377,6 @@ def rolling_ols_betas(
     window: int,
     min_obs: int,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """
-    Rolling OLS with intercept:
-        y = alpha + b_m * x_market + b_c * x_cluster + residual
-    """
     n = len(y)
     alpha = np.full(n, np.nan, dtype=float)
     beta_m = np.full(n, np.nan, dtype=float)
@@ -578,7 +650,6 @@ def main() -> None:
         df_ticker["pct_abs_cluster_of_return"] = df_ticker["abs_cluster_component"] / denom
         df_ticker["pct_abs_idio_of_return"] = df_ticker["abs_idiosyncratic_component"] / denom
 
-        # Rolling z-scores for event detection
         df_ticker["idio_zscore"] = rolling_zscore(
             df_ticker["idiosyncratic_component"],
             window=args.event_window,
@@ -598,15 +669,14 @@ def main() -> None:
         threshold = float(args.event_z_threshold)
         df_ticker["is_idio_event"] = (
             df_ticker["idio_zscore"].abs() >= threshold
-        ).astype(int)
+        ).astype(float)
         df_ticker["is_cluster_event"] = (
             df_ticker["cluster_zscore"].abs() >= threshold
-        ).astype(int)
+        ).astype(float)
         df_ticker["is_market_event"] = (
             df_ticker["market_zscore"].abs() >= threshold
-        ).astype(int)
+        ).astype(float)
 
-        # Require valid decomposition for event flags
         invalid_rows = df_ticker["valid_decomposition"] != 1
         for col in [
             "idio_zscore",
