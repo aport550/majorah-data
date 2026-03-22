@@ -2,69 +2,35 @@
 """
 Build daily return decomposition for Majorah.
 
-Goal
------
-For each stock and each day, decompose the stock's daily return into:
-
+For each stock and each day:
     stock_return ~= alpha + market_component + cluster_component + idiosyncratic_component
 
-using a rolling regression:
-
+Model:
     R_stock = alpha + beta_m * R_market + beta_c * R_cluster + residual
 
 Where:
 - R_market  = SPY daily return
-- R_cluster = average return of the stock's cluster peers EXCLUDING the stock itself
+- R_cluster = average return of cluster peers EXCLUDING the stock itself
 - residual  = idiosyncratic / company-specific portion
-
-Also computes event flags:
-- idio_zscore
-- cluster_zscore
-- market_zscore
-- is_idio_event
-- is_cluster_event
-- is_market_event
-- dominant_driver
-- dominant_driver_abs
-
-Inputs
-------
-Required:
-- data/daily_returns.csv
-
-Cluster input (first existing file found will be used):
-- data/stock_clusters.json
-- data/clusters.json
-- public/data/stock_clusters.json
-- public/data/clusters.json
-- data/stock_clusters.csv
-- data/clusters.csv
-- public/data/stock_clusters.csv
-- public/data/clusters.csv
 
 Outputs
 -------
-- data/return_decomposition.csv
-- public/data/return_decomposition.json
-- public/data/return_decomposition_by_ticker.json
 - public/data/return_decomposition_summary.json
+- public/data/return_decomposition_index.json
+- public/data/return_decomposition_shards/shard_00.json ... shard_15.json
 
-Usage
+Notes
 -----
-python build_return_decomposition.py
-
-Optional args
--------------
---window 60
---min-obs 40
---market SPY
---event-window 60
---event-z-threshold 2.0
+- Uses rolling OLS with intercept
+- Writes frontend-lean shard files only
+- Summary contains all-stocks aggregate info
+- Index maps ticker -> shard filename
 """
 
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -91,10 +57,9 @@ DEFAULT_CLUSTER_CANDIDATES = [
     ROOT / "public" / "data" / "clusters.csv",
 ]
 
-DEFAULT_OUTPUT_CSV = ROOT / "data" / "return_decomposition.csv"
-DEFAULT_OUTPUT_JSON = ROOT / "public" / "data" / "return_decomposition.json"
-DEFAULT_OUTPUT_BY_TICKER_JSON = ROOT / "public" / "data" / "return_decomposition_by_ticker.json"
-DEFAULT_OUTPUT_SUMMARY_JSON = ROOT / "public" / "data" / "return_decomposition_summary.json"
+OUTPUT_SUMMARY_JSON = ROOT / "public" / "data" / "return_decomposition_summary.json"
+OUTPUT_INDEX_JSON = ROOT / "public" / "data" / "return_decomposition_index.json"
+OUTPUT_SHARDS_DIR = ROOT / "public" / "data" / "return_decomposition_shards"
 
 
 def normalize_ticker(value: object) -> str:
@@ -104,6 +69,10 @@ def normalize_ticker(value: object) -> str:
 
 def ensure_parent_dir(path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
+
+
+def ensure_dir(path: Path) -> None:
+    path.mkdir(parents=True, exist_ok=True)
 
 
 def find_first_existing(paths: List[Path]) -> Optional[Path]:
@@ -172,21 +141,9 @@ def _extract_members(row: dict) -> List[str]:
 
 
 def parse_json_cluster_mapping(data: object) -> Dict[str, str]:
-    """
-    Returns ticker -> cluster_id mapping.
-
-    Supported examples:
-    1) {"AAPL": 0, "MSFT": 0}
-    2) {"0": ["AAPL", "MSFT"], "1": ["XOM", "CVX"]}
-    3) {"clusters": {"0": ["AAPL", "MSFT"], "1": ["XOM", "CVX"]}}
-    4) [{"ticker": "AAPL", "cluster": 0}, {"ticker": "MSFT", "cluster": 0}]
-    5) {"clusters": [{"cluster_id": 0, "members": ["AAPL", "MSFT"]}, ...]}
-    6) {"clusters": {"0": {"members": ["AAPL", "MSFT"]}, "1": {"members": ["XOM"]}}}
-    """
     mapping: Dict[str, str] = {}
 
     if isinstance(data, dict):
-        # Case 1: {"AAPL": 0, "MSFT": 0}
         scalar_mapping_candidate = {}
         scalar_like = True
         for k, v in data.items():
@@ -198,7 +155,6 @@ def parse_json_cluster_mapping(data: object) -> Dict[str, str]:
         if scalar_like and scalar_mapping_candidate:
             return scalar_mapping_candidate
 
-        # Case 2: {"0": ["AAPL", "MSFT"], "1": ["XOM", "CVX"]}
         list_mapping_candidate = {}
         all_values_are_lists = len(data) > 0 and all(isinstance(v, list) for v in data.values())
         if all_values_are_lists:
@@ -210,7 +166,6 @@ def parse_json_cluster_mapping(data: object) -> Dict[str, str]:
             if list_mapping_candidate:
                 return list_mapping_candidate
 
-        # Case 3: nested wrapper keys
         for key in ("clusters", "cluster_map", "mapping", "data", "results"):
             if key in data:
                 try:
@@ -220,7 +175,6 @@ def parse_json_cluster_mapping(data: object) -> Dict[str, str]:
                 except ValueError:
                     pass
 
-        # Case 4: {"AAPL": {"cluster": 0}}
         nested_ticker_mapping = {}
         ticker_style = True
         for k, v in data.items():
@@ -236,7 +190,6 @@ def parse_json_cluster_mapping(data: object) -> Dict[str, str]:
         if ticker_style and nested_ticker_mapping:
             return nested_ticker_mapping
 
-        # Case 5: {"0": {"members": ["AAPL", "MSFT"]}}
         cluster_object_mapping = {}
         cluster_object_style = True
         for k, v in data.items():
@@ -253,7 +206,6 @@ def parse_json_cluster_mapping(data: object) -> Dict[str, str]:
         if cluster_object_style and cluster_object_mapping:
             return cluster_object_mapping
 
-    # Case 6: [{"ticker":"AAPL","cluster":0}]
     if isinstance(data, list):
         row_mapping = {}
         row_style_ok = True
@@ -264,7 +216,6 @@ def parse_json_cluster_mapping(data: object) -> Dict[str, str]:
                 row_style_ok = False
                 break
 
-            # Row-per-ticker style
             ticker = row.get("ticker", row.get("symbol", row.get("stock", row.get("name"))))
             cluster_id = _extract_cluster_id(row)
             if ticker is not None and cluster_id is not None:
@@ -277,7 +228,6 @@ def parse_json_cluster_mapping(data: object) -> Dict[str, str]:
         if row_style_ok and saw_any_row_mapping and row_mapping:
             return row_mapping
 
-        # Case 7: [{"cluster_id":0,"members":["AAPL","MSFT"]}, ...]
         cluster_list_mapping = {}
         for row in data:
             if not isinstance(row, dict):
@@ -321,7 +271,6 @@ def read_cluster_mapping(path: Path) -> Dict[str, str]:
                 cluster_col = lower_map[candidate]
                 break
 
-        # row-per-cluster CSV with members/tickers column
         members_col = None
         for candidate in ("members", "tickers", "symbols", "stocks", "items", "constituents"):
             if candidate in lower_map:
@@ -440,24 +389,15 @@ def classify_dominant_driver(row: pd.Series) -> str:
         "cluster": abs(row.get("cluster_component", np.nan)),
         "idiosyncratic": abs(row.get("idiosyncratic_component", np.nan)),
     }
-
     finite_vals = {k: v for k, v in vals.items() if pd.notna(v)}
     if not finite_vals:
         return "unknown"
-
     return max(finite_vals, key=finite_vals.get)
 
 
 def summarize_ticker(df_ticker: pd.DataFrame) -> Dict[str, object]:
-    d = df_ticker.copy()
-
-    valid = d.dropna(
-        subset=[
-            "return",
-            "market_component",
-            "cluster_component",
-            "idiosyncratic_component",
-        ]
+    valid = df_ticker.dropna(
+        subset=["return", "market_component", "cluster_component", "idiosyncratic_component"]
     )
     if valid.empty:
         return {
@@ -489,7 +429,6 @@ def summarize_ticker(df_ticker: pd.DataFrame) -> Dict[str, object]:
 
     y = valid["return"].values
     residual = valid["idiosyncratic_component"].values
-
     y_var = float(np.nanvar(y, ddof=1)) if len(y) > 1 else np.nan
     resid_var = float(np.nanvar(residual, ddof=1)) if len(residual) > 1 else np.nan
     r2_proxy = None
@@ -515,15 +454,15 @@ def summarize_ticker(df_ticker: pd.DataFrame) -> Dict[str, object]:
         "ticker": valid["ticker"].iloc[0],
         "cluster_id": valid["cluster_id"].iloc[0] if "cluster_id" in valid.columns else None,
         "observations": int(len(valid)),
-        "mean_abs_return": float(valid["return"].abs().mean()),
-        "mean_abs_market_component": float(valid["market_component"].abs().mean()),
-        "mean_abs_cluster_component": float(valid["cluster_component"].abs().mean()),
-        "mean_abs_idiosyncratic_component": float(valid["idiosyncratic_component"].abs().mean()),
+        "mean_abs_return": round(float(valid["return"].abs().mean()), 6),
+        "mean_abs_market_component": round(float(valid["market_component"].abs().mean()), 6),
+        "mean_abs_cluster_component": round(float(valid["cluster_component"].abs().mean()), 6),
+        "mean_abs_idiosyncratic_component": round(float(valid["idiosyncratic_component"].abs().mean()), 6),
         "pct_abs_explained_by_market": ratio(abs_market, abs_ret),
         "pct_abs_explained_by_cluster": ratio(abs_cluster, abs_ret),
         "pct_abs_explained_idiosyncratic": ratio(abs_idio, abs_ret),
-        "mean_beta_market": float(valid["beta_market"].mean()) if "beta_market" in valid.columns else None,
-        "mean_beta_cluster": float(valid["beta_cluster"].mean()) if "beta_cluster" in valid.columns else None,
+        "mean_beta_market": round(float(valid["beta_market"].mean()), 6) if "beta_market" in valid.columns else None,
+        "mean_beta_cluster": round(float(valid["beta_cluster"].mean()), 6) if "beta_cluster" in valid.columns else None,
         "idio_event_rate": mean_bool("is_idio_event"),
         "cluster_event_rate": mean_bool("is_cluster_event"),
         "market_event_rate": mean_bool("is_market_event"),
@@ -534,38 +473,49 @@ def summarize_ticker(df_ticker: pd.DataFrame) -> Dict[str, object]:
     }
 
 
+def assign_shard(ticker: str, num_shards: int) -> str:
+    h = hashlib.md5(ticker.encode("utf-8")).hexdigest()
+    idx = int(h[:8], 16) % num_shards
+    return f"shard_{idx:02d}.json"
+
+
+def round_or_none(v: object, ndigits: int = 6):
+    try:
+        num = float(v)
+    except (TypeError, ValueError):
+        return None
+    if not np.isfinite(num):
+        return None
+    return round(num, ndigits)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--daily-returns", type=str, default=None, help="Path to daily_returns.csv")
-    parser.add_argument("--clusters", type=str, default=None, help="Path to cluster file (.json or .csv)")
-    parser.add_argument("--window", type=int, default=60, help="Rolling regression window")
-    parser.add_argument("--min-obs", type=int, default=40, help="Minimum observations required in rolling window")
-    parser.add_argument("--market", type=str, default="SPY", help="Market ticker column to use")
-    parser.add_argument("--event-window", type=int, default=60, help="Rolling window for event z-scores")
-    parser.add_argument("--event-z-threshold", type=float, default=2.0, help="Absolute z-score threshold for event flags")
+    parser.add_argument("--daily-returns", type=str, default=None)
+    parser.add_argument("--clusters", type=str, default=None)
+    parser.add_argument("--window", type=int, default=60)
+    parser.add_argument("--min-obs", type=int, default=40)
+    parser.add_argument("--market", type=str, default="SPY")
+    parser.add_argument("--event-window", type=int, default=60)
+    parser.add_argument("--event-z-threshold", type=float, default=2.0)
+    parser.add_argument("--num-shards", type=int, default=16)
+    parser.add_argument("--max-days", type=int, default=252)
     args = parser.parse_args()
 
     daily_returns_path = Path(args.daily_returns) if args.daily_returns else find_first_existing(DEFAULT_DAILY_RETURNS_CANDIDATES)
     if daily_returns_path is None:
-        raise FileNotFoundError(
-            "Could not find daily_returns.csv. Checked:\n- " + "\n- ".join(str(p) for p in DEFAULT_DAILY_RETURNS_CANDIDATES)
-        )
+        raise FileNotFoundError("Could not find daily_returns.csv")
 
     cluster_path = Path(args.clusters) if args.clusters else find_first_existing(DEFAULT_CLUSTER_CANDIDATES)
     if cluster_path is None:
-        raise FileNotFoundError(
-            "Could not find cluster file. Checked:\n- " + "\n- ".join(str(p) for p in DEFAULT_CLUSTER_CANDIDATES)
-        )
+        raise FileNotFoundError("Could not find cluster file")
 
     print(f"Reading daily returns: {daily_returns_path}")
     returns_df = read_daily_returns(daily_returns_path)
 
     market_ticker = normalize_ticker(args.market)
     if market_ticker not in returns_df.columns:
-        raise ValueError(
-            f"Market ticker '{market_ticker}' not found in daily_returns.csv columns. "
-            f"Available sample: {returns_df.columns[:20].tolist()}"
-        )
+        raise ValueError(f"Market ticker '{market_ticker}' not found in daily_returns.csv")
 
     print(f"Reading clusters: {cluster_path}")
     ticker_to_cluster = read_cluster_mapping(cluster_path)
@@ -575,11 +525,7 @@ def main() -> None:
     market_series = returns_wide[market_ticker]
 
     rows: List[pd.DataFrame] = []
-
-    eligible_tickers = [
-        c for c in returns_wide.columns
-        if c != market_ticker and c in ticker_to_cluster
-    ]
+    eligible_tickers = [c for c in returns_wide.columns if c != market_ticker and c in ticker_to_cluster]
 
     if not eligible_tickers:
         raise ValueError("No eligible tickers found that are both in daily_returns.csv and cluster mapping.")
@@ -594,7 +540,6 @@ def main() -> None:
             ticker_to_cluster=ticker_to_cluster,
             cluster_to_members=cluster_to_members,
         )
-
         stock_series = returns_wide[ticker]
 
         y = stock_series.values.astype(float)
@@ -629,26 +574,13 @@ def main() -> None:
             "ticker": ticker,
             "cluster_id": cluster_id,
             "return": y,
-            "market_return": x_market,
-            "cluster_return": x_cluster,
-            "alpha": alpha_component,
             "beta_market": beta_m,
             "beta_cluster": beta_c,
             "market_component": market_component,
             "cluster_component": cluster_component,
-            "explained_component": explained_component,
             "idiosyncratic_component": idiosyncratic_component,
-            "abs_return": np.abs(y),
-            "abs_market_component": np.abs(market_component),
-            "abs_cluster_component": np.abs(cluster_component),
-            "abs_idiosyncratic_component": np.abs(idiosyncratic_component),
             "valid_decomposition": valid_mask.astype(int),
         })
-
-        denom = df_ticker["abs_return"].replace(0, np.nan)
-        df_ticker["pct_abs_market_of_return"] = df_ticker["abs_market_component"] / denom
-        df_ticker["pct_abs_cluster_of_return"] = df_ticker["abs_cluster_component"] / denom
-        df_ticker["pct_abs_idio_of_return"] = df_ticker["abs_idiosyncratic_component"] / denom
 
         df_ticker["idio_zscore"] = rolling_zscore(
             df_ticker["idiosyncratic_component"],
@@ -667,15 +599,9 @@ def main() -> None:
         )
 
         threshold = float(args.event_z_threshold)
-        df_ticker["is_idio_event"] = (
-            df_ticker["idio_zscore"].abs() >= threshold
-        ).astype(float)
-        df_ticker["is_cluster_event"] = (
-            df_ticker["cluster_zscore"].abs() >= threshold
-        ).astype(float)
-        df_ticker["is_market_event"] = (
-            df_ticker["market_zscore"].abs() >= threshold
-        ).astype(float)
+        df_ticker["is_idio_event"] = (df_ticker["idio_zscore"].abs() >= threshold).astype(float)
+        df_ticker["is_cluster_event"] = (df_ticker["cluster_zscore"].abs() >= threshold).astype(float)
+        df_ticker["is_market_event"] = (df_ticker["market_zscore"].abs() >= threshold).astype(float)
 
         invalid_rows = df_ticker["valid_decomposition"] != 1
         for col in [
@@ -689,9 +615,6 @@ def main() -> None:
             df_ticker.loc[invalid_rows, col] = np.nan
 
         df_ticker["dominant_driver"] = df_ticker.apply(classify_dominant_driver, axis=1)
-        df_ticker["dominant_driver_abs"] = df_ticker[
-            ["abs_market_component", "abs_cluster_component", "abs_idiosyncratic_component"]
-        ].max(axis=1)
 
         rows.append(df_ticker)
 
@@ -704,37 +627,58 @@ def main() -> None:
     numeric_cols = out.select_dtypes(include=[np.number]).columns
     out[numeric_cols] = out[numeric_cols].replace([np.inf, -np.inf], np.nan)
 
-    ensure_parent_dir(DEFAULT_OUTPUT_CSV)
-    out.to_csv(DEFAULT_OUTPUT_CSV, index=False)
-    print(f"Wrote CSV: {DEFAULT_OUTPUT_CSV}")
-
-    out_json = out.copy()
-    out_json["date"] = pd.to_datetime(out_json["date"], errors="coerce").dt.strftime("%Y-%m-%d")
-
-    ensure_parent_dir(DEFAULT_OUTPUT_JSON)
-    with open(DEFAULT_OUTPUT_JSON, "w", encoding="utf-8") as f:
-        json.dump(out_json.to_dict(orient="records"), f, ensure_ascii=False)
-    print(f"Wrote JSON: {DEFAULT_OUTPUT_JSON}")
-
-    by_ticker: Dict[str, List[dict]] = {}
-    for ticker, grp in out_json.groupby("ticker", sort=True):
-        by_ticker[ticker] = grp.to_dict(orient="records")
-
-    ensure_parent_dir(DEFAULT_OUTPUT_BY_TICKER_JSON)
-    with open(DEFAULT_OUTPUT_BY_TICKER_JSON, "w", encoding="utf-8") as f:
-        json.dump(by_ticker, f, ensure_ascii=False)
-    print(f"Wrote JSON: {DEFAULT_OUTPUT_BY_TICKER_JSON}")
-
+    # summary
     summary_rows = []
     for ticker, grp in out.groupby("ticker", sort=True):
         summary_rows.append(summarize_ticker(grp))
-
     summary_df = pd.DataFrame(summary_rows).sort_values("ticker").reset_index(drop=True)
 
-    ensure_parent_dir(DEFAULT_OUTPUT_SUMMARY_JSON)
-    with open(DEFAULT_OUTPUT_SUMMARY_JSON, "w", encoding="utf-8") as f:
+    ensure_parent_dir(OUTPUT_SUMMARY_JSON)
+    with open(OUTPUT_SUMMARY_JSON, "w", encoding="utf-8") as f:
         json.dump(summary_df.to_dict(orient="records"), f, ensure_ascii=False)
-    print(f"Wrote JSON: {DEFAULT_OUTPUT_SUMMARY_JSON}")
+    print(f"Wrote summary JSON: {OUTPUT_SUMMARY_JSON}")
+
+    # shard output
+    ensure_dir(OUTPUT_SHARDS_DIR)
+
+    # clean old shards
+    for old_file in OUTPUT_SHARDS_DIR.glob("shard_*.json"):
+        old_file.unlink()
+
+    index_map: Dict[str, str] = {}
+    shards: Dict[str, Dict[str, List[dict]]] = {}
+
+    for ticker, grp in out.groupby("ticker", sort=True):
+        grp = grp.sort_values("date").tail(args.max_days).copy()
+        shard_name = assign_shard(ticker, args.num_shards)
+        index_map[ticker] = shard_name
+        shards.setdefault(shard_name, {})
+
+        grp["date"] = pd.to_datetime(grp["date"], errors="coerce").dt.strftime("%Y-%m-%d")
+
+        frontend_rows = []
+        for _, row in grp.iterrows():
+            frontend_rows.append({
+                "date": row["date"],
+                "return": round_or_none(row["return"]),
+                "market_component": round_or_none(row["market_component"]),
+                "cluster_component": round_or_none(row["cluster_component"]),
+                "idiosyncratic_component": round_or_none(row["idiosyncratic_component"]),
+                "dominant_driver": row["dominant_driver"] if pd.notna(row["dominant_driver"]) else None,
+                "is_idio_event": int(row["is_idio_event"]) if pd.notna(row["is_idio_event"]) else None,
+            })
+
+        shards[shard_name][ticker] = frontend_rows
+
+    with open(OUTPUT_INDEX_JSON, "w", encoding="utf-8") as f:
+        json.dump(index_map, f, ensure_ascii=False)
+    print(f"Wrote index JSON: {OUTPUT_INDEX_JSON}")
+
+    for shard_name, shard_payload in sorted(shards.items()):
+        out_path = OUTPUT_SHARDS_DIR / shard_name
+        with open(out_path, "w", encoding="utf-8") as f:
+            json.dump(shard_payload, f, ensure_ascii=False)
+        print(f"Wrote shard: {out_path}")
 
     print("Done.")
 
