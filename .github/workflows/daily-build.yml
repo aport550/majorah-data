@@ -7,7 +7,6 @@ on:
 
 permissions:
   contents: write
-  pull-requests: write
 
 concurrency:
   group: return-matrix
@@ -22,6 +21,13 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: true
+
+      - name: Configure git/network
+        run: |
+          git config --global http.version HTTP/1.1
+          git config --global http.postBuffer 524288000
+          git config --global core.compression 0
 
       - name: Debug repo structure
         run: |
@@ -29,92 +35,28 @@ jobs:
           echo "Repo root:"
           ls -lah
           echo ""
-          echo "Workflows:"
-          ls -lah .github/workflows || true
-          echo ""
           echo "Scripts:"
           ls -lah scripts || true
           echo ""
 
-          echo "Does return matrix script exist?"
-          if [ -f scripts/build_return_matrix.py ]; then
-            echo "OK: scripts/build_return_matrix.py exists"
-          else
-            echo "ERROR: scripts/build_return_matrix.py is missing"
-            exit 1
-          fi
-          echo ""
-
-          echo "Does clustering script exist?"
-          if [ -f scripts/build_clusters.py ]; then
-            echo "OK: scripts/build_clusters.py exists"
-          else
-            echo "ERROR: scripts/build_clusters.py is missing"
-            exit 1
-          fi
-          echo ""
-
-          echo "Does return decomposition script exist?"
-          if [ -f scripts/build_return_decomposition.py ]; then
-            echo "OK: scripts/build_return_decomposition.py exists"
-          else
-            echo "ERROR: scripts/build_return_decomposition.py is missing"
-            exit 1
-          fi
-          echo ""
-
-          echo "Does top correlations script exist?"
-          if [ -f scripts/build_top_correlations.py ]; then
-            echo "OK: scripts/build_top_correlations.py exists"
-          else
-            echo "ERROR: scripts/build_top_correlations.py is missing"
-            exit 1
-          fi
-          echo ""
-
-          echo "Does dividends script exist?"
-          if [ -f scripts/build_dividends.py ]; then
-            echo "OK: scripts/build_dividends.py exists"
-          else
-            echo "ERROR: scripts/build_dividends.py is missing"
-            exit 1
-          fi
-          echo ""
-
-          echo "Does sectors script exist?"
-          if [ -f scripts/build_sectors.py ]; then
-            echo "OK: scripts/build_sectors.py exists"
-          else
-            echo "ERROR: scripts/build_sectors.py is missing"
-            exit 1
-          fi
-          echo ""
-
-          echo "Does fundamental trends script exist?"
-          if [ -f scripts/build_fundamental_trends.py ]; then
-            echo "OK: scripts/build_fundamental_trends.py exists"
-          else
-            echo "ERROR: scripts/build_fundamental_trends.py is missing"
-            exit 1
-          fi
-          echo ""
-
-          echo "Does macro dimensions script exist?"
-          if [ -f scripts/build_macro_dimensions.py ]; then
-            echo "OK: scripts/build_macro_dimensions.py exists"
-          else
-            echo "ERROR: scripts/build_macro_dimensions.py is missing"
-            exit 1
-          fi
-          echo ""
-
-          echo "Does stock macro exposures script exist?"
-          if [ -f scripts/build_stock_macro_exposures.py ]; then
-            echo "OK: scripts/build_stock_macro_exposures.py exists"
-          else
-            echo "ERROR: scripts/build_stock_macro_exposures.py is missing"
-            exit 1
-          fi
+          for f in \
+            scripts/build_return_matrix.py \
+            scripts/build_macro_dimensions.py \
+            scripts/build_stock_macro_exposures.py \
+            scripts/build_clusters.py \
+            scripts/build_return_decomposition.py \
+            scripts/build_top_correlations.py \
+            scripts/build_dividends.py \
+            scripts/build_sectors.py \
+            scripts/build_fundamental_trends.py
+          do
+            if [ -f "$f" ]; then
+              echo "OK: $f exists"
+            else
+              echo "ERROR: $f is missing"
+              exit 1
+            fi
+          done
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -134,116 +76,60 @@ jobs:
       - name: Run return matrix script
         run: |
           python scripts/build_return_matrix.py
-          echo ""
-          echo "After return matrix, public/data tree:"
-          ls -lah public || true
-          ls -lah public/data || true
-          echo ""
-          echo "Data tree:"
           ls -lah data || true
+          ls -lah public/data || true
 
       - name: Build macro dimensions
         run: |
           python scripts/build_macro_dimensions.py
-          echo ""
-          echo "After macro dimensions, public/data tree:"
-          ls -lah public || true
           ls -lah public/data || true
 
       - name: Build stock macro exposures
         run: |
           python scripts/build_stock_macro_exposures.py
-          echo ""
-          echo "After stock macro exposures, public/data tree:"
-          ls -lah public || true
           ls -lah public/data || true
 
       - name: Build clusters
         run: |
           python scripts/build_clusters.py
-          echo ""
-          echo "After clusters, public/data tree:"
-          ls -lah public || true
-          ls -lah public/data || true
-          echo ""
           echo "Cluster files:"
           ls -lah data/clusters.json || true
           ls -lah data/stock_clusters.json || true
           ls -lah public/data/clusters.json || true
           ls -lah public/data/stock_clusters.json || true
 
-      - name: Debug clusters JSON preview
-        run: |
-          echo "Preview data/clusters.json"
-          if [ -f data/clusters.json ]; then
-            head -c 1000 data/clusters.json
-            echo ""
-          else
-            echo "data/clusters.json not found"
-          fi
-          echo ""
-          echo "Preview public/data/clusters.json"
-          if [ -f public/data/clusters.json ]; then
-            head -c 1000 public/data/clusters.json
-            echo ""
-          else
-            echo "public/data/clusters.json not found"
-          fi
-
       - name: Build return decomposition
         run: |
           python scripts/build_return_decomposition.py
-          echo ""
-          echo "After return decomposition, public/data tree:"
-          ls -lah public || true
-          ls -lah public/data || true
-          echo ""
           echo "Return decomposition outputs:"
           ls -lah data/return_decomposition.csv || true
           ls -lah public/data/return_decomposition.json || true
           ls -lah public/data/return_decomposition_by_ticker.json || true
           ls -lah public/data/return_decomposition_summary.json || true
-          echo ""
-          echo "Preview return_decomposition_by_ticker.json"
-          if [ -f public/data/return_decomposition_by_ticker.json ]; then
-            wc -c public/data/return_decomposition_by_ticker.json
-            head -c 1000 public/data/return_decomposition_by_ticker.json
-            echo ""
-          else
-            echo "public/data/return_decomposition_by_ticker.json not found"
-            exit 1
-          fi
+
+      - name: Remove oversized redundant flat decomposition JSON
+        run: |
+          rm -f public/data/return_decomposition.json
+          echo "Removed public/data/return_decomposition.json to reduce push size"
 
       - name: Build top correlations
         run: |
           python scripts/build_top_correlations.py
-          echo ""
-          echo "After top correlations, public/data tree:"
-          ls -lah public || true
           ls -lah public/data || true
 
       - name: Build dividends
         run: |
           python scripts/build_dividends.py
-          echo ""
-          echo "After dividends build, public/data tree:"
-          ls -lah public || true
           ls -lah public/data || true
 
       - name: Build sectors
         run: |
           python scripts/build_sectors.py
-          echo ""
-          echo "After sectors build, public/data tree:"
-          ls -lah public || true
           ls -lah public/data || true
 
       - name: Build fundamental trends
         run: |
           python scripts/build_fundamental_trends.py
-          echo ""
-          echo "After fundamental trends build, public/data tree:"
-          ls -lah public || true
           ls -lah public/data || true
 
       - name: Verify outputs
@@ -268,11 +154,10 @@ jobs:
           test -f public/data/fundamental_trends.json
           test -f public/data/macro_dimension_scores.json
           test -f public/data/stock_macro_exposures.json
-          test -f public/data/return_decomposition.json
           test -f public/data/return_decomposition_by_ticker.json
           test -f public/data/return_decomposition_summary.json
 
-          echo "All outputs exist."
+          echo "All required outputs exist."
 
       - name: Show git status and diff
         run: |
@@ -282,13 +167,6 @@ jobs:
           echo "Git diff stat:"
           git diff --stat || true
           echo ""
-          echo "Tracked decomposition files:"
-          git ls-files public/data/return_decomposition.json || true
-          git ls-files public/data/return_decomposition_by_ticker.json || true
-          git ls-files public/data/return_decomposition_summary.json || true
-          echo ""
-          echo "If files exist locally:"
-          ls -lah public/data/return_decomposition.json || true
           ls -lah public/data/return_decomposition_by_ticker.json || true
           ls -lah public/data/return_decomposition_summary.json || true
 
@@ -312,71 +190,48 @@ jobs:
             public/data/fundamental_trends.json
             public/data/macro_dimension_scores.json
             public/data/stock_macro_exposures.json
-            public/data/return_decomposition.json
             public/data/return_decomposition_by_ticker.json
             public/data/return_decomposition_summary.json
           if-no-files-found: error
 
-      - name: Create or update PR
-        id: cpr
-        uses: peter-evans/create-pull-request@v6
-        with:
-          branch: auto/return-matrix
-          base: main
-          title: Auto update return matrix
-          commit-message: Auto update return matrix
-          body: |
-            Automated update of generated data files.
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-            This PR includes:
-            - return matrix outputs
-            - macro dimension outputs
-            - stock macro exposures
-            - cluster outputs
-            - return decomposition outputs
-            - supporting JSON/CSV artifacts
-          add-paths: |
-            data/daily_returns.csv
-            data/correlation_matrix.csv
-            data/macro_dimension_scores.csv
-            data/stock_macro_exposures.csv
-            data/return_decomposition.csv
-            public/data/clusters.json
-            public/data/top_correlations.json
-            public/data/dividends.json
-            public/data/sectors.json
-            public/data/fundamental_trends.json
-            public/data/vols.json
-            public/data/covariance_matrix.csv
-            public/data/expected_returns.json
-            public/data/macro_dimension_scores.json
-            public/data/stock_macro_exposures.json
-            public/data/return_decomposition.json
-            public/data/return_decomposition_by_ticker.json
+          git add \
+            data/daily_returns.csv \
+            data/correlation_matrix.csv \
+            data/macro_dimension_scores.csv \
+            data/stock_macro_exposures.csv \
+            data/return_decomposition.csv \
+            public/data/clusters.json \
+            public/data/top_correlations.json \
+            public/data/dividends.json \
+            public/data/sectors.json \
+            public/data/fundamental_trends.json \
+            public/data/vols.json \
+            public/data/covariance_matrix.csv \
+            public/data/expected_returns.json \
+            public/data/macro_dimension_scores.json \
+            public/data/stock_macro_exposures.json \
+            public/data/return_decomposition_by_ticker.json \
             public/data/return_decomposition_summary.json
-          delete-branch: false
 
-      - name: Show PR result
-        run: |
-          echo "pull-request-number: ${{ steps.cpr.outputs.pull-request-number }}"
-          echo "pull-request-url: ${{ steps.cpr.outputs.pull-request-url }}"
-          echo "pull-request-operation: ${{ steps.cpr.outputs.pull-request-operation }}"
-
-      - name: Fail if no PR and no changes
-        run: |
-          PR_NUMBER="${{ steps.cpr.outputs.pull-request-number }}"
-          PR_OPERATION="${{ steps.cpr.outputs.pull-request-operation }}"
-
-          echo "PR number: $PR_NUMBER"
-          echo "PR operation: $PR_OPERATION"
-
-          if [ -z "$PR_NUMBER" ] && [ "$PR_OPERATION" != "updated" ] && [ "$PR_OPERATION" != "created" ]; then
-            echo "No PR was created or updated."
-            echo "This usually means either:"
-            echo "1) there were no file changes"
-            echo "2) PR creation failed"
-            echo ""
-            echo "Git status for debugging:"
-            git status --short
-            exit 1
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            echo "HAS_CHANGES=false" >> $GITHUB_ENV
+          else
+            git commit -m "Auto update return matrix"
+            echo "HAS_CHANGES=true" >> $GITHUB_ENV
           fi
+
+      - name: Pull latest main before push
+        if: env.HAS_CHANGES == 'true'
+        run: |
+          git pull --rebase origin main
+
+      - name: Push to main
+        if: env.HAS_CHANGES == 'true'
+        run: |
+          git push origin HEAD:main
