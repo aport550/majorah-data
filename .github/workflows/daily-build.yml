@@ -45,6 +45,15 @@ jobs:
           fi
           echo ""
 
+          echo "Does return decomposition script exist?"
+          if [ -f scripts/build_return_decomposition.py ]; then
+            echo "OK: scripts/build_return_decomposition.py exists"
+          else
+            echo "ERROR: scripts/build_return_decomposition.py is missing"
+            exit 1
+          fi
+          echo ""
+
           echo "Does top correlations script exist?"
           if [ -f scripts/build_top_correlations.py ]; then
             echo "OK: scripts/build_top_correlations.py exists"
@@ -124,6 +133,20 @@ jobs:
           ls -lah public || true
           ls -lah public/data || true
 
+      - name: Build return decomposition
+        run: |
+          python scripts/build_return_decomposition.py
+          echo ""
+          echo "After return decomposition, public/ tree:"
+          ls -lah public || true
+          ls -lah public/data || true
+          echo ""
+          echo "Return decomposition outputs:"
+          ls -lah data/return_decomposition.csv || true
+          ls -lah public/data/return_decomposition.json || true
+          ls -lah public/data/return_decomposition_by_ticker.json || true
+          ls -lah public/data/return_decomposition_summary.json || true
+
       - name: Build top correlations
         run: |
           python scripts/build_top_correlations.py
@@ -166,6 +189,7 @@ jobs:
           test -f data/correlation_matrix.csv
           test -f data/macro_dimension_scores.csv
           test -f data/stock_macro_exposures.csv
+          test -f data/return_decomposition.csv
 
           test -f public/data/clusters.json
           test -f public/data/top_correlations.json
@@ -177,6 +201,9 @@ jobs:
           test -f public/data/fundamental_trends.json
           test -f public/data/macro_dimension_scores.json
           test -f public/data/stock_macro_exposures.json
+          test -f public/data/return_decomposition.json
+          test -f public/data/return_decomposition_by_ticker.json
+          test -f public/data/return_decomposition_summary.json
 
           echo "All outputs exist."
 
@@ -189,6 +216,7 @@ jobs:
             data/correlation_matrix.csv
             data/macro_dimension_scores.csv
             data/stock_macro_exposures.csv
+            data/return_decomposition.csv
             public/data/clusters.json
             public/data/top_correlations.json
             public/data/vols.json
@@ -199,6 +227,9 @@ jobs:
             public/data/fundamental_trends.json
             public/data/macro_dimension_scores.json
             public/data/stock_macro_exposures.json
+            public/data/return_decomposition.json
+            public/data/return_decomposition_by_ticker.json
+            public/data/return_decomposition_summary.json
           if-no-files-found: error
 
       - name: Create PR
@@ -215,6 +246,7 @@ jobs:
             data/correlation_matrix.csv
             data/macro_dimension_scores.csv
             data/stock_macro_exposures.csv
+            data/return_decomposition.csv
             public/data/clusters.json
             public/data/top_correlations.json
             public/data/dividends.json
@@ -225,3 +257,6 @@ jobs:
             public/data/expected_returns.json
             public/data/macro_dimension_scores.json
             public/data/stock_macro_exposures.json
+            public/data/return_decomposition.json
+            public/data/return_decomposition_by_ticker.json
+            public/data/return_decomposition_summary.json
