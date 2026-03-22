@@ -32,12 +32,8 @@ jobs:
       - name: Debug repo structure
         run: |
           set -e
-          echo "Repo root:"
           ls -lah
-          echo ""
-          echo "Scripts:"
           ls -lah scripts || true
-          echo ""
 
           for f in \
             scripts/build_return_matrix.py \
@@ -50,10 +46,8 @@ jobs:
             scripts/build_sectors.py \
             scripts/build_fundamental_trends.py
           do
-            if [ -f "$f" ]; then
-              echo "OK: $f exists"
-            else
-              echo "ERROR: $f is missing"
+            if [ ! -f "$f" ]; then
+              echo "ERROR: missing $f"
               exit 1
             fi
           done
@@ -72,77 +66,54 @@ jobs:
         run: |
           mkdir -p data
           mkdir -p public/data
+          mkdir -p public/data/return_decomposition_shards
 
       - name: Run return matrix script
-        run: |
-          python scripts/build_return_matrix.py
-          ls -lah data || true
-          ls -lah public/data || true
+        run: python scripts/build_return_matrix.py
 
       - name: Build macro dimensions
-        run: |
-          python scripts/build_macro_dimensions.py
-          ls -lah public/data || true
+        run: python scripts/build_macro_dimensions.py
 
       - name: Build stock macro exposures
-        run: |
-          python scripts/build_stock_macro_exposures.py
-          ls -lah public/data || true
+        run: python scripts/build_stock_macro_exposures.py
 
       - name: Build clusters
         run: |
           python scripts/build_clusters.py
-          echo "Cluster files:"
           ls -lah data/clusters.json || true
-          ls -lah data/stock_clusters.json || true
           ls -lah public/data/clusters.json || true
-          ls -lah public/data/stock_clusters.json || true
 
       - name: Build return decomposition
         run: |
-          python scripts/build_return_decomposition.py
-          echo "Return decomposition outputs:"
-          ls -lah data/return_decomposition.csv || true
-          ls -lah public/data/return_decomposition.json || true
-          ls -lah public/data/return_decomposition_by_ticker.json || true
-          ls -lah public/data/return_decomposition_summary.json || true
-
-      - name: Remove oversized redundant flat decomposition JSON
-        run: |
-          rm -f public/data/return_decomposition.json
-          echo "Removed public/data/return_decomposition.json to reduce push size"
+          python scripts/build_return_decomposition.py --num-shards 16 --max-days 252
+          ls -lah public/data/return_decomposition_summary.json
+          ls -lah public/data/return_decomposition_index.json
+          ls -lah public/data/return_decomposition_shards || true
 
       - name: Build top correlations
-        run: |
-          python scripts/build_top_correlations.py
-          ls -lah public/data || true
+        run: python scripts/build_top_correlations.py
 
       - name: Build dividends
-        run: |
-          python scripts/build_dividends.py
-          ls -lah public/data || true
+        run: python scripts/build_dividends.py
 
       - name: Build sectors
-        run: |
-          python scripts/build_sectors.py
-          ls -lah public/data || true
+        run: python scripts/build_sectors.py
 
       - name: Build fundamental trends
+        run: python scripts/build_fundamental_trends.py
+
+      - name: Remove old oversized decomposition files
         run: |
-          python scripts/build_fundamental_trends.py
-          ls -lah public/data || true
+          rm -f data/return_decomposition.csv
+          rm -f public/data/return_decomposition.json
+          rm -f public/data/return_decomposition_by_ticker.json
 
       - name: Verify outputs
         run: |
-          ls -lah data || true
-          ls -lah public || true
-          ls -lah public/data || true
-
           test -f data/daily_returns.csv
           test -f data/correlation_matrix.csv
           test -f data/macro_dimension_scores.csv
           test -f data/stock_macro_exposures.csv
-          test -f data/return_decomposition.csv
 
           test -f public/data/clusters.json
           test -f public/data/top_correlations.json
@@ -154,21 +125,20 @@ jobs:
           test -f public/data/fundamental_trends.json
           test -f public/data/macro_dimension_scores.json
           test -f public/data/stock_macro_exposures.json
-          test -f public/data/return_decomposition_by_ticker.json
+
           test -f public/data/return_decomposition_summary.json
+          test -f public/data/return_decomposition_index.json
+          test -d public/data/return_decomposition_shards
 
-          echo "All required outputs exist."
+          echo "Shard count:"
+          find public/data/return_decomposition_shards -maxdepth 1 -name 'shard_*.json' | wc -l
 
-      - name: Show git status and diff
+      - name: Show file sizes
         run: |
-          echo "Git status:"
-          git status --short
-          echo ""
-          echo "Git diff stat:"
-          git diff --stat || true
-          echo ""
-          ls -lah public/data/return_decomposition_by_ticker.json || true
-          ls -lah public/data/return_decomposition_summary.json || true
+          ls -lah public/data/return_decomposition_summary.json
+          ls -lah public/data/return_decomposition_index.json
+          du -sh public/data/return_decomposition_shards || true
+          find public/data/return_decomposition_shards -maxdepth 1 -name 'shard_*.json' -exec ls -lah {} \;
 
       - name: Upload outputs
         uses: actions/upload-artifact@v4
@@ -179,7 +149,6 @@ jobs:
             data/correlation_matrix.csv
             data/macro_dimension_scores.csv
             data/stock_macro_exposures.csv
-            data/return_decomposition.csv
             public/data/clusters.json
             public/data/top_correlations.json
             public/data/vols.json
@@ -190,9 +159,15 @@ jobs:
             public/data/fundamental_trends.json
             public/data/macro_dimension_scores.json
             public/data/stock_macro_exposures.json
-            public/data/return_decomposition_by_ticker.json
             public/data/return_decomposition_summary.json
+            public/data/return_decomposition_index.json
+            public/data/return_decomposition_shards
           if-no-files-found: error
+
+      - name: Show git status
+        run: |
+          git status --short
+          git diff --stat || true
 
       - name: Commit changes
         run: |
@@ -204,7 +179,6 @@ jobs:
             data/correlation_matrix.csv \
             data/macro_dimension_scores.csv \
             data/stock_macro_exposures.csv \
-            data/return_decomposition.csv \
             public/data/clusters.json \
             public/data/top_correlations.json \
             public/data/dividends.json \
@@ -215,8 +189,14 @@ jobs:
             public/data/expected_returns.json \
             public/data/macro_dimension_scores.json \
             public/data/stock_macro_exposures.json \
-            public/data/return_decomposition_by_ticker.json \
-            public/data/return_decomposition_summary.json
+            public/data/return_decomposition_summary.json \
+            public/data/return_decomposition_index.json \
+            public/data/return_decomposition_shards
+
+          git rm -f --ignore-unmatch \
+            data/return_decomposition.csv \
+            public/data/return_decomposition.json \
+            public/data/return_decomposition_by_ticker.json
 
           if git diff --cached --quiet; then
             echo "No changes to commit."
@@ -228,10 +208,8 @@ jobs:
 
       - name: Pull latest main before push
         if: env.HAS_CHANGES == 'true'
-        run: |
-          git pull --rebase origin main
+        run: git pull --rebase origin main
 
       - name: Push to main
         if: env.HAS_CHANGES == 'true'
-        run: |
-          git push origin HEAD:main
+        run: git push origin HEAD:main
