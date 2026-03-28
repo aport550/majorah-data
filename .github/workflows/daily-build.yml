@@ -44,7 +44,8 @@ jobs:
             scripts/build_top_correlations.py \
             scripts/build_dividends.py \
             scripts/build_sectors.py \
-            scripts/build_fundamental_trends.py
+            scripts/build_fundamental_trends.py \
+            scripts/build_stock_balance_sheet_dilution.py
           do
             if [ ! -f "$f" ]; then
               echo "ERROR: missing $f"
@@ -102,6 +103,9 @@ jobs:
       - name: Build fundamental trends
         run: python scripts/build_fundamental_trends.py
 
+      - name: Build stock balance sheet and dilution metrics
+        run: python scripts/build_stock_balance_sheet_dilution.py
+
       - name: Remove old oversized decomposition files
         run: |
           rm -f data/return_decomposition.csv
@@ -114,6 +118,7 @@ jobs:
           test -f data/correlation_matrix.csv
           test -f data/macro_dimension_scores.csv
           test -f data/stock_macro_exposures.csv
+          test -f data/stock_balance_sheet_dilution.csv
 
           test -f public/data/clusters.json
           test -f public/data/top_correlations.json
@@ -125,6 +130,7 @@ jobs:
           test -f public/data/fundamental_trends.json
           test -f public/data/macro_dimension_scores.json
           test -f public/data/stock_macro_exposures.json
+          test -f public/data/stock_balance_sheet_dilution.json
 
           test -f public/data/return_decomposition_summary.json
           test -f public/data/return_decomposition_index.json
@@ -137,6 +143,7 @@ jobs:
         run: |
           ls -lah public/data/return_decomposition_summary.json
           ls -lah public/data/return_decomposition_index.json
+          ls -lah public/data/stock_balance_sheet_dilution.json || true
           du -sh public/data/return_decomposition_shards || true
           find public/data/return_decomposition_shards -maxdepth 1 -name 'shard_*.json' -exec ls -lah {} \;
 
@@ -149,6 +156,7 @@ jobs:
             data/correlation_matrix.csv
             data/macro_dimension_scores.csv
             data/stock_macro_exposures.csv
+            data/stock_balance_sheet_dilution.csv
             public/data/clusters.json
             public/data/top_correlations.json
             public/data/vols.json
@@ -159,6 +167,7 @@ jobs:
             public/data/fundamental_trends.json
             public/data/macro_dimension_scores.json
             public/data/stock_macro_exposures.json
+            public/data/stock_balance_sheet_dilution.json
             public/data/return_decomposition_summary.json
             public/data/return_decomposition_index.json
             public/data/return_decomposition_shards
@@ -179,6 +188,7 @@ jobs:
             data/correlation_matrix.csv \
             data/macro_dimension_scores.csv \
             data/stock_macro_exposures.csv \
+            data/stock_balance_sheet_dilution.csv \
             public/data/clusters.json \
             public/data/top_correlations.json \
             public/data/dividends.json \
@@ -189,6 +199,7 @@ jobs:
             public/data/expected_returns.json \
             public/data/macro_dimension_scores.json \
             public/data/stock_macro_exposures.json \
+            public/data/stock_balance_sheet_dilution.json \
             public/data/return_decomposition_summary.json \
             public/data/return_decomposition_index.json \
             public/data/return_decomposition_shards
