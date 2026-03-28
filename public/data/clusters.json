@@ -1,15 +1,15 @@
 {
-  "cluster_count_target": 120,
+  "cluster_count_target": 116,
   "min_cluster_size_target": 4,
   "max_cluster_size_target": 12,
   "ticker_count_used": 943,
-  "cluster_count": 113,
+  "cluster_count": 115,
   "solution_quality": {
     "min_size_found": 4,
     "max_size_found": 12,
-    "balance_penalty": 1067.0,
-    "cohesion_penalty": 67.67066302765498,
-    "cluster_count": 113,
+    "balance_penalty": 1015.0,
+    "cohesion_penalty": 68.70457592923091,
+    "cluster_count": 115,
     "hard_rule_satisfied": true
   },
   "clusters": [
@@ -76,15 +76,15 @@
       "size": 12,
       "members": [
         "ACHR",
-        "ARBE",
+        "ASTS",
         "BKSY",
+        "CHWY",
         "EVEX",
-        "FUBO",
-        "JNPR",
         "JOBY",
         "LUNR",
         "OUST",
         "PL",
+        "PLSR",
         "RDW",
         "RKLB"
       ]
@@ -132,63 +132,6 @@
       "cluster_id": 7,
       "size": 12,
       "members": [
-        "AEIS",
-        "AMAT",
-        "AMBA",
-        "ASML",
-        "ASX",
-        "CEVA",
-        "KLAC",
-        "LRCX",
-        "MKSI",
-        "MPWR",
-        "MU",
-        "TSM"
-      ]
-    },
-    {
-      "cluster_rank": 8,
-      "cluster_id": 8,
-      "size": 12,
-      "members": [
-        "AEVA",
-        "ARKK",
-        "ARKQ",
-        "ARKW",
-        "ARKX",
-        "CAPR",
-        "KSCP",
-        "POET",
-        "RBOT",
-        "TATT",
-        "ULTY",
-        "YMAX"
-      ]
-    },
-    {
-      "cluster_rank": 9,
-      "cluster_id": 9,
-      "size": 12,
-      "members": [
-        "AGFY",
-        "BITO",
-        "BITX",
-        "BZAI",
-        "COIN",
-        "CONY",
-        "FBTC",
-        "FETH",
-        "GLXY",
-        "HOOD",
-        "MSTY",
-        "TELO"
-      ]
-    },
-    {
-      "cluster_rank": 10,
-      "cluster_id": 10,
-      "size": 12,
-      "members": [
         "AGG",
         "BLV",
         "BND",
@@ -204,17 +147,36 @@
       ]
     },
     {
-      "cluster_rank": 11,
-      "cluster_id": 11,
+      "cluster_rank": 8,
+      "cluster_id": 8,
+      "size": 12,
+      "members": [
+        "AKLI",
+        "BITO",
+        "BITX",
+        "BZAI",
+        "COIN",
+        "CONY",
+        "FBTC",
+        "FETH",
+        "GLXY",
+        "HOOD",
+        "MSTY",
+        "TELO"
+      ]
+    },
+    {
+      "cluster_rank": 9,
+      "cluster_id": 9,
       "size": 12,
       "members": [
         "ALLY",
         "BUSE",
         "CCNE",
-        "CDZI",
-        "CLMB",
+        "CLF",
         "HBAN",
         "KEY",
+        "NUE",
         "ONB",
         "PNC",
         "SLG",
@@ -223,8 +185,27 @@
       ]
     },
     {
-      "cluster_rank": 12,
-      "cluster_id": 12,
+      "cluster_rank": 10,
+      "cluster_id": 10,
+      "size": 12,
+      "members": [
+        "AMD",
+        "ARM",
+        "CDNS",
+        "CEVA",
+        "CHPX",
+        "HSAI",
+        "MYO",
+        "QTUM",
+        "SFTBY",
+        "SMH",
+        "SNPS",
+        "SOXL"
+      ]
+    },
+    {
+      "cluster_rank": 11,
+      "cluster_id": 11,
       "size": 12,
       "members": [
         "AMGN",
@@ -242,14 +223,14 @@
       ]
     },
     {
-      "cluster_rank": 13,
-      "cluster_id": 13,
+      "cluster_rank": 12,
+      "cluster_id": 12,
       "size": 12,
       "members": [
         "AMT",
+        "ANSS",
         "AUTO",
         "AWK",
-        "BITD",
         "D",
         "DUK",
         "EIX",
@@ -261,27 +242,8 @@
       ]
     },
     {
-      "cluster_rank": 14,
-      "cluster_id": 14,
-      "size": 12,
-      "members": [
-        "AOS",
-        "APD",
-        "BYDD",
-        "DE",
-        "FAST",
-        "HALO",
-        "HON",
-        "ITW",
-        "LIN",
-        "MMM",
-        "NDSN",
-        "RPRX"
-      ]
-    },
-    {
-      "cluster_rank": 15,
-      "cluster_id": 15,
+      "cluster_rank": 13,
+      "cluster_id": 13,
       "size": 12,
       "members": [
         "APA",
@@ -296,6 +258,44 @@
         "XLE",
         "XOM",
         "XOP"
+      ]
+    },
+    {
+      "cluster_rank": 14,
+      "cluster_id": 14,
+      "size": 12,
+      "members": [
+        "ARAY",
+        "BOTZ",
+        "EIS",
+        "GAMB",
+        "IBOT",
+        "KEYS",
+        "LLY",
+        "MTSR",
+        "NVO",
+        "RACE",
+        "ROBO",
+        "TEVA"
+      ]
+    },
+    {
+      "cluster_rank": 15,
+      "cluster_id": 15,
+      "size": 12,
+      "members": [
+        "ARVN",
+        "BHVN",
+        "CAPR",
+        "CRNX",
+        "DYN",
+        "IDYA",
+        "IMNM",
+        "KYMR",
+        "NRIX",
+        "RGNX",
+        "RLAY",
+        "XENE"
       ]
     },
     {
@@ -322,25 +322,6 @@
       "cluster_id": 17,
       "size": 12,
       "members": [
-        "AVUV",
-        "AXSM",
-        "CWCO",
-        "EWTX",
-        "GDRX",
-        "IDCC",
-        "IWM",
-        "ORAN",
-        "PAHC",
-        "SANA",
-        "VB",
-        "VIOV"
-      ]
-    },
-    {
-      "cluster_rank": 18,
-      "cluster_id": 18,
-      "size": 12,
-      "members": [
         "B",
         "BTG",
         "GDX",
@@ -356,8 +337,8 @@
       ]
     },
     {
-      "cluster_rank": 19,
-      "cluster_id": 19,
+      "cluster_rank": 18,
+      "cluster_id": 18,
       "size": 12,
       "members": [
         "BABA",
@@ -372,6 +353,25 @@
         "WB",
         "XIACF",
         "XPEV"
+      ]
+    },
+    {
+      "cluster_rank": 19,
+      "cluster_id": 19,
+      "size": 12,
+      "members": [
+        "BAX",
+        "CI",
+        "CLOV",
+        "CNC",
+        "CVS",
+        "ELV",
+        "HUM",
+        "IHF",
+        "MOH",
+        "OSCR",
+        "UNH",
+        "UNHG"
       ]
     },
     {
@@ -402,7 +402,7 @@
         "CHD",
         "CL",
         "CME",
-        "ERJ",
+        "CPTN",
         "KMB",
         "KVUE",
         "MCD",
@@ -419,7 +419,7 @@
       "members": [
         "CALX",
         "JEPQ",
-        "MANH",
+        "MBLY",
         "MESO",
         "NANC",
         "QQQ",
@@ -434,25 +434,6 @@
     {
       "cluster_rank": 23,
       "cluster_id": 23,
-      "size": 12,
-      "members": [
-        "CDNS",
-        "CHPX",
-        "CLPT",
-        "HSAI",
-        "MBLY",
-        "MYO",
-        "QTUM",
-        "SKYT",
-        "SMH",
-        "SNPS",
-        "SOXL",
-        "XMTR"
-      ]
-    },
-    {
-      "cluster_rank": 24,
-      "cluster_id": 24,
       "size": 12,
       "members": [
         "DGRO",
@@ -470,8 +451,8 @@
       ]
     },
     {
-      "cluster_rank": 25,
-      "cluster_id": 25,
+      "cluster_rank": 24,
+      "cluster_id": 24,
       "size": 12,
       "members": [
         "DHI",
@@ -489,8 +470,8 @@
       ]
     },
     {
-      "cluster_rank": 26,
-      "cluster_id": 26,
+      "cluster_rank": 25,
+      "cluster_id": 25,
       "size": 12,
       "members": [
         "NVDQ",
@@ -508,44 +489,44 @@
       ]
     },
     {
-      "cluster_rank": 27,
-      "cluster_id": 27,
+      "cluster_rank": 26,
+      "cluster_id": 26,
       "size": 11,
       "members": [
         "A",
         "BLFS",
+        "BPMC",
         "BRKR",
         "DHR",
-        "GH",
+        "HALO",
         "ILMN",
         "IQV",
-        "NTRA",
         "RGEN",
-        "TMO",
-        "VCYT"
+        "RPRX",
+        "TMO"
+      ]
+    },
+    {
+      "cluster_rank": 27,
+      "cluster_id": 27,
+      "size": 11,
+      "members": [
+        "AA",
+        "ALB",
+        "ASYS",
+        "BATT",
+        "EAF",
+        "ILIT",
+        "LAR",
+        "LIT",
+        "LNSTY",
+        "SGML",
+        "SQM"
       ]
     },
     {
       "cluster_rank": 28,
       "cluster_id": 28,
-      "size": 11,
-      "members": [
-        "AA",
-        "ALB",
-        "BATT",
-        "GLCR",
-        "ILIT",
-        "LAR",
-        "LIT",
-        "SGML",
-        "SNTI",
-        "SQM",
-        "SRRK"
-      ]
-    },
-    {
-      "cluster_rank": 29,
-      "cluster_id": 29,
       "size": 11,
       "members": [
         "ADBE",
@@ -562,8 +543,8 @@
       ]
     },
     {
-      "cluster_rank": 30,
-      "cluster_id": 30,
+      "cluster_rank": 29,
+      "cluster_id": 29,
       "size": 11,
       "members": [
         "ADI",
@@ -580,8 +561,44 @@
       ]
     },
     {
+      "cluster_rank": 30,
+      "cluster_id": 30,
+      "size": 11,
+      "members": [
+        "ADPT",
+        "BFLY",
+        "DNA",
+        "EXAS",
+        "FARO",
+        "GH",
+        "NTRA",
+        "OMCL",
+        "PACB",
+        "TXG",
+        "VCYT"
+      ]
+    },
+    {
       "cluster_rank": 31,
       "cluster_id": 31,
+      "size": 11,
+      "members": [
+        "AEIS",
+        "AMAT",
+        "AMBA",
+        "ASML",
+        "ASX",
+        "KLAC",
+        "LRCX",
+        "MKSI",
+        "MPWR",
+        "MU",
+        "TSM"
+      ]
+    },
+    {
+      "cluster_rank": 32,
+      "cluster_id": 32,
       "size": 11,
       "members": [
         "AES",
@@ -598,8 +615,8 @@
       ]
     },
     {
-      "cluster_rank": 32,
-      "cluster_id": 32,
+      "cluster_rank": 33,
+      "cluster_id": 33,
       "size": 11,
       "members": [
         "AGX",
@@ -616,39 +633,21 @@
       ]
     },
     {
-      "cluster_rank": 33,
-      "cluster_id": 33,
-      "size": 11,
-      "members": [
-        "AME",
-        "BBIO",
-        "CAT",
-        "CORT",
-        "CSCO",
-        "DGII",
-        "EMR",
-        "GOP",
-        "ROK",
-        "TDY",
-        "TEL"
-      ]
-    },
-    {
       "cluster_rank": 34,
       "cluster_id": 34,
       "size": 11,
       "members": [
-        "AMP",
-        "BAC",
-        "C",
-        "COF",
-        "GS",
-        "JPM",
-        "MS",
-        "RY",
-        "SCHW",
-        "TD",
-        "WFC"
+        "BUG",
+        "DAT",
+        "FROG",
+        "HUMA",
+        "IGV",
+        "IOT",
+        "LRNZ",
+        "NICE",
+        "PEGA",
+        "RSKD",
+        "XDAT"
       ]
     },
     {
@@ -656,127 +655,39 @@
       "cluster_id": 35,
       "size": 11,
       "members": [
-        "ANSS",
-        "BAX",
-        "CI",
-        "CNC",
-        "CVS",
-        "ELV",
-        "HUM",
-        "IHF",
-        "MOH",
-        "UNH",
-        "UNHG"
+        "CRWD",
+        "CYBR",
+        "DT",
+        "FTNT",
+        "KTWIY",
+        "NET",
+        "PANW",
+        "RBRK",
+        "S",
+        "TENB",
+        "ZS"
       ]
     },
     {
       "cluster_rank": 36,
       "cluster_id": 36,
-      "size": 11,
+      "size": 10,
       "members": [
-        "ARAY",
-        "BOTZ",
-        "EIS",
-        "GAMB",
-        "IBOT",
-        "LLY",
-        "NATI",
-        "NVO",
-        "RACE",
-        "ROBO",
-        "TEVA"
+        "AEVA",
+        "ARKK",
+        "ARKQ",
+        "ARKW",
+        "ARKX",
+        "KSCP",
+        "RBOT",
+        "TATT",
+        "ULTY",
+        "YMAX"
       ]
     },
     {
       "cluster_rank": 37,
       "cluster_id": 37,
-      "size": 11,
-      "members": [
-        "ARM",
-        "GOOGL",
-        "INSM",
-        "LQDA",
-        "MYNZ",
-        "SFTBY",
-        "SPY",
-        "SPYI",
-        "VNM",
-        "VOO",
-        "VT"
-      ]
-    },
-    {
-      "cluster_rank": 38,
-      "cluster_id": 38,
-      "size": 11,
-      "members": [
-        "CIEN",
-        "COHR",
-        "GLW",
-        "KEYS",
-        "LASR",
-        "LITE",
-        "MTSI",
-        "SMTC",
-        "STX",
-        "TER",
-        "TSEM"
-      ]
-    },
-    {
-      "cluster_rank": 39,
-      "cluster_id": 39,
-      "size": 10,
-      "members": [
-        "ACLS",
-        "AEHR",
-        "ASYS",
-        "BOTT",
-        "CRUS",
-        "INTC",
-        "QRVO",
-        "RMBS",
-        "SWKS",
-        "VECO"
-      ]
-    },
-    {
-      "cluster_rank": 40,
-      "cluster_id": 40,
-      "size": 10,
-      "members": [
-        "ADPT",
-        "BFLY",
-        "CDXS",
-        "DNA",
-        "EXAS",
-        "HES",
-        "MGX",
-        "OMCL",
-        "PACB",
-        "TXG"
-      ]
-    },
-    {
-      "cluster_rank": 41,
-      "cluster_id": 41,
-      "size": 10,
-      "members": [
-        "AI",
-        "APPHQ",
-        "CLOV",
-        "ENVX",
-        "IMMR",
-        "OSCR",
-        "PGY",
-        "SOFI",
-        "SYM",
-        "UPST"
-      ]
-    },
-    {
-      "cluster_rank": 42,
-      "cluster_id": 42,
       "size": 10,
       "members": [
         "ALAB",
@@ -792,8 +703,42 @@
       ]
     },
     {
-      "cluster_rank": 43,
-      "cluster_id": 43,
+      "cluster_rank": 38,
+      "cluster_id": 38,
+      "size": 10,
+      "members": [
+        "APD",
+        "DE",
+        "DLTR",
+        "FAST",
+        "HON",
+        "ITW",
+        "LIN",
+        "MMM",
+        "NDSN",
+        "XLB"
+      ]
+    },
+    {
+      "cluster_rank": 39,
+      "cluster_id": 39,
+      "size": 10,
+      "members": [
+        "APPHQ",
+        "DOC",
+        "INVH",
+        "O",
+        "PLD",
+        "PSA",
+        "RYN",
+        "VNQ",
+        "WELL",
+        "WY"
+      ]
+    },
+    {
+      "cluster_rank": 40,
+      "cluster_id": 40,
       "size": 10,
       "members": [
         "ARCC",
@@ -809,42 +754,25 @@
       ]
     },
     {
-      "cluster_rank": 44,
-      "cluster_id": 44,
+      "cluster_rank": 41,
+      "cluster_id": 41,
       "size": 10,
       "members": [
-        "ARGT",
-        "BBAR",
-        "BMA",
-        "GGAL",
-        "IRS",
-        "PAM",
-        "TEO",
-        "VERV",
-        "VIST",
-        "YPF"
+        "AVUV",
+        "CDZI",
+        "CLMB",
+        "CWCO",
+        "DGII",
+        "GDRX",
+        "IWM",
+        "LCTX",
+        "VB",
+        "VIOV"
       ]
     },
     {
-      "cluster_rank": 45,
-      "cluster_id": 45,
-      "size": 10,
-      "members": [
-        "AYRO",
-        "DOC",
-        "INVH",
-        "O",
-        "PLD",
-        "PSA",
-        "RYN",
-        "VNQ",
-        "WELL",
-        "WY"
-      ]
-    },
-    {
-      "cluster_rank": 46,
-      "cluster_id": 46,
+      "cluster_rank": 42,
+      "cluster_id": 42,
       "size": 10,
       "members": [
         "BE",
@@ -860,8 +788,8 @@
       ]
     },
     {
-      "cluster_rank": 47,
-      "cluster_id": 47,
+      "cluster_rank": 43,
+      "cluster_id": 43,
       "size": 10,
       "members": [
         "BHP",
@@ -877,25 +805,8 @@
       ]
     },
     {
-      "cluster_rank": 48,
-      "cluster_id": 48,
-      "size": 10,
-      "members": [
-        "BHVN",
-        "CRNX",
-        "DYN",
-        "IDYA",
-        "IMNM",
-        "KYMR",
-        "NRIX",
-        "RLAY",
-        "VERA",
-        "XENE"
-      ]
-    },
-    {
-      "cluster_rank": 49,
-      "cluster_id": 49,
+      "cluster_rank": 44,
+      "cluster_id": 44,
       "size": 10,
       "members": [
         "BITF",
@@ -911,25 +822,8 @@
       ]
     },
     {
-      "cluster_rank": 50,
-      "cluster_id": 50,
-      "size": 10,
-      "members": [
-        "BUG",
-        "DAT",
-        "FIG",
-        "HUMA",
-        "IGV",
-        "LRNZ",
-        "NICE",
-        "RSKD",
-        "XDAT",
-        "ZETA"
-      ]
-    },
-    {
-      "cluster_rank": 51,
-      "cluster_id": 51,
+      "cluster_rank": 45,
+      "cluster_id": 45,
       "size": 10,
       "members": [
         "CAG",
@@ -945,74 +839,42 @@
       ]
     },
     {
-      "cluster_rank": 52,
-      "cluster_id": 52,
+      "cluster_rank": 46,
+      "cluster_id": 46,
       "size": 10,
       "members": [
-        "CRWD",
-        "CYBR",
-        "FROG",
-        "NET",
-        "PANW",
-        "PEGA",
-        "RBRK",
-        "S",
-        "TENB",
-        "ZS"
+        "CELH",
+        "CORT",
+        "CSCO",
+        "FMET",
+        "LQDA",
+        "SPY",
+        "SPYI",
+        "VNM",
+        "VOO",
+        "VT"
       ]
     },
     {
-      "cluster_rank": 53,
-      "cluster_id": 53,
+      "cluster_rank": 47,
+      "cluster_id": 47,
       "size": 10,
       "members": [
-        "CTRA",
-        "EPD",
-        "EQT",
-        "ET",
-        "KMI",
-        "LNG",
-        "OKE",
-        "TPL",
-        "VNOM",
-        "WMB"
+        "CIEN",
+        "COHR",
+        "GLW",
+        "IDCC",
+        "LITE",
+        "MTSI",
+        "PAHC",
+        "SMTC",
+        "TSEM",
+        "VERV"
       ]
     },
     {
-      "cluster_rank": 54,
-      "cluster_id": 54,
-      "size": 9,
-      "members": [
-        "ABBNY",
-        "BASFY",
-        "HSBC",
-        "HXGBY",
-        "KIGRY",
-        "SAN",
-        "SIEGY",
-        "STLA",
-        "VEOEY"
-      ]
-    },
-    {
-      "cluster_rank": 55,
-      "cluster_id": 55,
-      "size": 9,
-      "members": [
-        "ADYEY",
-        "BKNG",
-        "BLK",
-        "BX",
-        "DIS",
-        "FICO",
-        "STGW",
-        "UAVE",
-        "WLKP"
-      ]
-    },
-    {
-      "cluster_rank": 56,
-      "cluster_id": 56,
+      "cluster_rank": 48,
+      "cluster_id": 48,
       "size": 9,
       "members": [
         "AIR",
@@ -1027,8 +889,56 @@
       ]
     },
     {
-      "cluster_rank": 57,
-      "cluster_id": 57,
+      "cluster_rank": 49,
+      "cluster_id": 49,
+      "size": 9,
+      "members": [
+        "ALLO",
+        "AMRN",
+        "CDXS",
+        "CRBU",
+        "FATE",
+        "HES",
+        "MGX",
+        "SGMO",
+        "VKTX"
+      ]
+    },
+    {
+      "cluster_rank": 50,
+      "cluster_id": 50,
+      "size": 9,
+      "members": [
+        "AMP",
+        "BAC",
+        "C",
+        "COF",
+        "GS",
+        "JPM",
+        "MS",
+        "SCHW",
+        "WFC"
+      ]
+    },
+    {
+      "cluster_rank": 51,
+      "cluster_id": 51,
+      "size": 9,
+      "members": [
+        "ARGT",
+        "BBAR",
+        "BMA",
+        "GGAL",
+        "IRS",
+        "PAM",
+        "TEO",
+        "VIST",
+        "YPF"
+      ]
+    },
+    {
+      "cluster_rank": 52,
+      "cluster_id": 52,
       "size": 9,
       "members": [
         "ARQQ",
@@ -1043,29 +953,13 @@
       ]
     },
     {
-      "cluster_rank": 58,
-      "cluster_id": 58,
-      "size": 9,
-      "members": [
-        "ASTS",
-        "CHWY",
-        "PLSR",
-        "RIVN",
-        "SPWR",
-        "TSLA",
-        "TSLL",
-        "TSYY",
-        "XLY"
-      ]
-    },
-    {
-      "cluster_rank": 59,
-      "cluster_id": 59,
+      "cluster_rank": 53,
+      "cluster_id": 53,
       "size": 9,
       "members": [
         "AZO",
         "BTI",
-        "FARO",
+        "DRNE",
         "KR",
         "MO",
         "PM",
@@ -1075,8 +969,8 @@
       ]
     },
     {
-      "cluster_rank": 60,
-      "cluster_id": 60,
+      "cluster_rank": 54,
+      "cluster_id": 54,
       "size": 9,
       "members": [
         "BILL",
@@ -1091,14 +985,30 @@
       ]
     },
     {
-      "cluster_rank": 61,
-      "cluster_id": 61,
+      "cluster_rank": 55,
+      "cluster_id": 55,
+      "size": 9,
+      "members": [
+        "DECK",
+        "EL",
+        "LULU",
+        "NKE",
+        "ONON",
+        "SBUX",
+        "TGT",
+        "VFC",
+        "WSM"
+      ]
+    },
+    {
+      "cluster_rank": 56,
+      "cluster_id": 56,
       "size": 8,
       "members": [
         "ABAT",
         "BEEM",
+        "JNPR",
         "MOB",
-        "MTSR",
         "ONDS",
         "RCAT",
         "RR",
@@ -1106,38 +1016,38 @@
       ]
     },
     {
-      "cluster_rank": 62,
-      "cluster_id": 62,
+      "cluster_rank": 57,
+      "cluster_id": 57,
       "size": 8,
       "members": [
-        "ALLO",
-        "CRBU",
-        "FATE",
-        "KRRO",
-        "LAZR",
-        "LCTX",
-        "SGMO",
-        "WVE"
+        "ADCT",
+        "BBIO",
+        "ESI",
+        "GOP",
+        "ITRI",
+        "NATI",
+        "NOVT",
+        "VERA"
       ]
     },
     {
-      "cluster_rank": 63,
-      "cluster_id": 63,
+      "cluster_rank": 58,
+      "cluster_id": 58,
       "size": 8,
       "members": [
-        "AMD",
-        "CELH",
-        "FMET",
-        "HIMS",
-        "NVDA",
-        "NVDW",
-        "NVDY",
-        "SMCI"
+        "AI",
+        "ARBE",
+        "ENVX",
+        "FTML",
+        "FUBO",
+        "PGY",
+        "SOFI",
+        "UPST"
       ]
     },
     {
-      "cluster_rank": 64,
-      "cluster_id": 64,
+      "cluster_rank": 59,
+      "cluster_id": 59,
       "size": 8,
       "members": [
         "APP",
@@ -1151,8 +1061,23 @@
       ]
     },
     {
-      "cluster_rank": 65,
-      "cluster_id": 65,
+      "cluster_rank": 60,
+      "cluster_id": 60,
+      "size": 8,
+      "members": [
+        "APTV",
+        "BASFY",
+        "F",
+        "GM",
+        "GNTX",
+        "KIGRY",
+        "MGA",
+        "STLA"
+      ]
+    },
+    {
+      "cluster_rank": 61,
+      "cluster_id": 61,
       "size": 8,
       "members": [
         "BINC",
@@ -1166,8 +1091,23 @@
       ]
     },
     {
-      "cluster_rank": 66,
-      "cluster_id": 66,
+      "cluster_rank": 62,
+      "cluster_id": 62,
+      "size": 8,
+      "members": [
+        "BOTT",
+        "HYMTF",
+        "IMMR",
+        "KRRO",
+        "LASR",
+        "RMBS",
+        "SYM",
+        "WVE"
+      ]
+    },
+    {
+      "cluster_rank": 63,
+      "cluster_id": 63,
       "size": 8,
       "members": [
         "BP",
@@ -1181,8 +1121,23 @@
       ]
     },
     {
-      "cluster_rank": 67,
-      "cluster_id": 67,
+      "cluster_rank": 64,
+      "cluster_id": 64,
+      "size": 8,
+      "members": [
+        "CTRA",
+        "EPD",
+        "EQT",
+        "ET",
+        "KMI",
+        "LNG",
+        "OKE",
+        "WMB"
+      ]
+    },
+    {
+      "cluster_rank": 65,
+      "cluster_id": 65,
       "size": 8,
       "members": [
         "DDD",
@@ -1193,6 +1148,35 @@
         "NNDM",
         "SSYS",
         "VUZI"
+      ]
+    },
+    {
+      "cluster_rank": 66,
+      "cluster_id": 66,
+      "size": 8,
+      "members": [
+        "LNC",
+        "MET",
+        "PRU",
+        "RY",
+        "STGW",
+        "TD",
+        "UAVE",
+        "WLKP"
+      ]
+    },
+    {
+      "cluster_rank": 67,
+      "cluster_id": 67,
+      "size": 7,
+      "members": [
+        "ACLS",
+        "AEHR",
+        "CLPT",
+        "INTC",
+        "SKYT",
+        "VECO",
+        "XMTR"
       ]
     },
     {
@@ -1228,13 +1212,13 @@
       "cluster_id": 70,
       "size": 7,
       "members": [
-        "AMRN",
-        "BBAI",
-        "HYMTF",
-        "JMIA",
-        "NNOX",
-        "SOUN",
-        "VKTX"
+        "AME",
+        "CAT",
+        "EMR",
+        "FIP",
+        "ROK",
+        "SANA",
+        "TDY"
       ]
     },
     {
@@ -1243,8 +1227,8 @@
       "size": 7,
       "members": [
         "AMRX",
-        "CPTN",
-        "DRNE",
+        "BRKS",
+        "BYDD",
         "GILD",
         "INCY",
         "JAZZ",
@@ -1256,18 +1240,46 @@
       "cluster_id": 72,
       "size": 7,
       "members": [
-        "AMZN",
-        "DT",
-        "FTNT",
-        "KTWIY",
-        "META",
-        "MSFT",
-        "SHOP"
+        "AOS",
+        "CNI",
+        "CSX",
+        "NSC",
+        "ODFL",
+        "UNP",
+        "UPS"
       ]
     },
     {
       "cluster_rank": 73,
       "cluster_id": 73,
+      "size": 7,
+      "members": [
+        "AVNT",
+        "ERII",
+        "JBTM",
+        "POWW",
+        "PRCT",
+        "UBX",
+        "VCEL"
+      ]
+    },
+    {
+      "cluster_rank": 74,
+      "cluster_id": 74,
+      "size": 7,
+      "members": [
+        "AXSM",
+        "EPI",
+        "EWTX",
+        "FLSA",
+        "INDA",
+        "KSA",
+        "ORAN"
+      ]
+    },
+    {
+      "cluster_rank": 75,
+      "cluster_id": 75,
       "size": 7,
       "members": [
         "CAI",
@@ -1280,36 +1292,36 @@
       ]
     },
     {
-      "cluster_rank": 74,
-      "cluster_id": 74,
-      "size": 7,
-      "members": [
-        "EL",
-        "LKQ",
-        "NKE",
-        "SBUX",
-        "TGT",
-        "UPS",
-        "VFC"
-      ]
-    },
-    {
-      "cluster_rank": 75,
-      "cluster_id": 75,
-      "size": 7,
-      "members": [
-        "ERII",
-        "ESI",
-        "ITRI",
-        "JBTM",
-        "NOVT",
-        "POWW",
-        "UBX"
-      ]
-    },
-    {
       "cluster_rank": 76,
       "cluster_id": 76,
+      "size": 7,
+      "members": [
+        "CRUS",
+        "MRNA",
+        "QRVO",
+        "STX",
+        "SWKS",
+        "TEL",
+        "TER"
+      ]
+    },
+    {
+      "cluster_rank": 77,
+      "cluster_id": 77,
+      "size": 7,
+      "members": [
+        "CTM",
+        "LAZR",
+        "PDYN",
+        "POET",
+        "SRFM",
+        "VERI",
+        "ZSPC"
+      ]
+    },
+    {
+      "cluster_rank": 78,
+      "cluster_id": 78,
       "size": 7,
       "members": [
         "FANUY",
@@ -1322,12 +1334,12 @@
       ]
     },
     {
-      "cluster_rank": 77,
-      "cluster_id": 77,
+      "cluster_rank": 79,
+      "cluster_id": 79,
       "size": 6,
       "members": [
         "ABBV",
-        "BRKS",
+        "BITD",
         "CHTR",
         "CMCSA",
         "DGX",
@@ -1335,8 +1347,21 @@
       ]
     },
     {
-      "cluster_rank": 78,
-      "cluster_id": 78,
+      "cluster_rank": 80,
+      "cluster_id": 80,
+      "size": 6,
+      "members": [
+        "ADYEY",
+        "BKNG",
+        "BLK",
+        "BX",
+        "DIS",
+        "FICO"
+      ]
+    },
+    {
+      "cluster_rank": 81,
+      "cluster_id": 81,
       "size": 6,
       "members": [
         "BAK",
@@ -1348,8 +1373,8 @@
       ]
     },
     {
-      "cluster_rank": 79,
-      "cluster_id": 79,
+      "cluster_rank": 82,
+      "cluster_id": 82,
       "size": 6,
       "members": [
         "CFLT",
@@ -1361,24 +1386,49 @@
       ]
     },
     {
-      "cluster_rank": 80,
-      "cluster_id": 80,
+      "cluster_rank": 83,
+      "cluster_id": 83,
       "size": 6,
       "members": [
-        "CTM",
-        "LNSTY",
-        "PDYN",
-        "SRFM",
-        "VERI",
-        "ZSPC"
+        "FTV",
+        "J",
+        "LKQ",
+        "MAR",
+        "MNRO",
+        "MTN"
       ]
     },
     {
-      "cluster_rank": 81,
-      "cluster_id": 81,
+      "cluster_rank": 84,
+      "cluster_id": 84,
+      "size": 6,
+      "members": [
+        "HIMS",
+        "NVDA",
+        "NVDW",
+        "NVDY",
+        "SMCI",
+        "SRRK"
+      ]
+    },
+    {
+      "cluster_rank": 85,
+      "cluster_id": 85,
       "size": 5,
       "members": [
-        "ALTR",
+        "ABBNY",
+        "HXGBY",
+        "INSM",
+        "MYNZ",
+        "SIEGY"
+      ]
+    },
+    {
+      "cluster_rank": 86,
+      "cluster_id": 86,
+      "size": 5,
+      "members": [
+        "AGFY",
         "CNBS",
         "HYFM",
         "MSOS",
@@ -1386,20 +1436,20 @@
       ]
     },
     {
-      "cluster_rank": 82,
-      "cluster_id": 82,
+      "cluster_rank": 87,
+      "cluster_id": 87,
       "size": 5,
       "members": [
-        "APTV",
-        "F",
-        "GM",
-        "GNTX",
-        "MGA"
+        "AMZN",
+        "GOOGL",
+        "META",
+        "MSFT",
+        "SHOP"
       ]
     },
     {
-      "cluster_rank": 83,
-      "cluster_id": 83,
+      "cluster_rank": 88,
+      "cluster_id": 88,
       "size": 5,
       "members": [
         "ATEC",
@@ -1410,20 +1460,8 @@
       ]
     },
     {
-      "cluster_rank": 84,
-      "cluster_id": 84,
-      "size": 5,
-      "members": [
-        "BDSX",
-        "IOT",
-        "ISRL",
-        "MRVL",
-        "SGOV"
-      ]
-    },
-    {
-      "cluster_rank": 85,
-      "cluster_id": 85,
+      "cluster_rank": 89,
+      "cluster_id": 89,
       "size": 5,
       "members": [
         "CGNX",
@@ -1434,20 +1472,8 @@
       ]
     },
     {
-      "cluster_rank": 86,
-      "cluster_id": 86,
-      "size": 5,
-      "members": [
-        "CLF",
-        "HAL",
-        "NUE",
-        "OII",
-        "SLB"
-      ]
-    },
-    {
-      "cluster_rank": 87,
-      "cluster_id": 87,
+      "cluster_rank": 90,
+      "cluster_id": 90,
       "size": 5,
       "members": [
         "CNDT",
@@ -1458,32 +1484,8 @@
       ]
     },
     {
-      "cluster_rank": 88,
-      "cluster_id": 88,
-      "size": 5,
-      "members": [
-        "CNI",
-        "CSX",
-        "NSC",
-        "ODFL",
-        "UNP"
-      ]
-    },
-    {
-      "cluster_rank": 89,
-      "cluster_id": 89,
-      "size": 5,
-      "members": [
-        "DLTR",
-        "FTV",
-        "J",
-        "MAR",
-        "XLB"
-      ]
-    },
-    {
-      "cluster_rank": 90,
-      "cluster_id": 90,
+      "cluster_rank": 91,
+      "cluster_id": 91,
       "size": 5,
       "members": [
         "GILT",
@@ -1494,20 +1496,32 @@
       ]
     },
     {
-      "cluster_rank": 91,
-      "cluster_id": 91,
+      "cluster_rank": 92,
+      "cluster_id": 92,
       "size": 5,
       "members": [
-        "LNC",
-        "MET",
-        "PRU",
-        "SNGX",
-        "XYL"
+        "GLCR",
+        "HSBC",
+        "SAN",
+        "SNTI",
+        "VEOEY"
       ]
     },
     {
-      "cluster_rank": 92,
-      "cluster_id": 92,
+      "cluster_rank": 93,
+      "cluster_id": 93,
+      "size": 5,
+      "members": [
+        "HAL",
+        "OII",
+        "SLB",
+        "TPL",
+        "VNOM"
+      ]
+    },
+    {
+      "cluster_rank": 94,
+      "cluster_id": 94,
       "size": 4,
       "members": [
         "AAPL",
@@ -1517,19 +1531,8 @@
       ]
     },
     {
-      "cluster_rank": 93,
-      "cluster_id": 93,
-      "size": 4,
-      "members": [
-        "ADCT",
-        "ARVN",
-        "MRNA",
-        "RGNX"
-      ]
-    },
-    {
-      "cluster_rank": 94,
-      "cluster_id": 94,
+      "cluster_rank": 95,
+      "cluster_id": 95,
       "size": 4,
       "members": [
         "AEYE",
@@ -1539,8 +1542,8 @@
       ]
     },
     {
-      "cluster_rank": 95,
-      "cluster_id": 95,
+      "cluster_rank": 96,
+      "cluster_id": 96,
       "size": 4,
       "members": [
         "AFK",
@@ -1550,30 +1553,52 @@
       ]
     },
     {
-      "cluster_rank": 96,
-      "cluster_id": 96,
+      "cluster_rank": 97,
+      "cluster_id": 97,
       "size": 4,
       "members": [
-        "AKLI",
+        "ALTR",
         "BNGO",
         "PERF",
         "WATT"
       ]
     },
     {
-      "cluster_rank": 97,
-      "cluster_id": 97,
+      "cluster_rank": 98,
+      "cluster_id": 98,
       "size": 4,
       "members": [
-        "AVNT",
-        "FIP",
-        "PRCT",
-        "VCEL"
+        "AYRO",
+        "DEO",
+        "IFF",
+        "STZ"
       ]
     },
     {
-      "cluster_rank": 98,
-      "cluster_id": 98,
+      "cluster_rank": 99,
+      "cluster_id": 99,
+      "size": 4,
+      "members": [
+        "BBAI",
+        "JMIA",
+        "NNOX",
+        "SOUN"
+      ]
+    },
+    {
+      "cluster_rank": 100,
+      "cluster_id": 100,
+      "size": 4,
+      "members": [
+        "BDSX",
+        "ISRL",
+        "MRVL",
+        "SGOV"
+      ]
+    },
+    {
+      "cluster_rank": 101,
+      "cluster_id": 101,
       "size": 4,
       "members": [
         "BKRKY",
@@ -1583,8 +1608,8 @@
       ]
     },
     {
-      "cluster_rank": 99,
-      "cluster_id": 99,
+      "cluster_rank": 102,
+      "cluster_id": 102,
       "size": 4,
       "members": [
         "BMNR",
@@ -1594,19 +1619,8 @@
       ]
     },
     {
-      "cluster_rank": 100,
-      "cluster_id": 100,
-      "size": 4,
-      "members": [
-        "BPMC",
-        "DEO",
-        "IFF",
-        "STZ"
-      ]
-    },
-    {
-      "cluster_rank": 101,
-      "cluster_id": 101,
+      "cluster_rank": 103,
+      "cluster_id": 103,
       "size": 4,
       "members": [
         "BULL",
@@ -1616,8 +1630,8 @@
       ]
     },
     {
-      "cluster_rank": 102,
-      "cluster_id": 102,
+      "cluster_rank": 104,
+      "cluster_id": 104,
       "size": 4,
       "members": [
         "CORZ",
@@ -1627,8 +1641,8 @@
       ]
     },
     {
-      "cluster_rank": 103,
-      "cluster_id": 103,
+      "cluster_rank": 105,
+      "cluster_id": 105,
       "size": 4,
       "members": [
         "CPNG",
@@ -1638,19 +1652,8 @@
       ]
     },
     {
-      "cluster_rank": 104,
-      "cluster_id": 104,
-      "size": 4,
-      "members": [
-        "DECK",
-        "LULU",
-        "ONON",
-        "WSM"
-      ]
-    },
-    {
-      "cluster_rank": 105,
-      "cluster_id": 105,
+      "cluster_rank": 106,
+      "cluster_id": 106,
       "size": 4,
       "members": [
         "DINO",
@@ -1660,25 +1663,14 @@
       ]
     },
     {
-      "cluster_rank": 106,
-      "cluster_id": 106,
-      "size": 4,
-      "members": [
-        "EAF",
-        "LASE",
-        "TRMB",
-        "XPON"
-      ]
-    },
-    {
       "cluster_rank": 107,
       "cluster_id": 107,
       "size": 4,
       "members": [
-        "EPI",
-        "FLSA",
-        "INDA",
-        "KSA"
+        "ERJ",
+        "HCA",
+        "THC",
+        "UHS"
       ]
     },
     {
@@ -1699,8 +1691,8 @@
       "members": [
         "FERG",
         "LECO",
-        "MNRO",
-        "MTN"
+        "SNGX",
+        "XYL"
       ]
     },
     {
@@ -1708,10 +1700,10 @@
       "cluster_id": 110,
       "size": 4,
       "members": [
-        "FTML",
-        "HCA",
-        "THC",
-        "UHS"
+        "FIG",
+        "MANH",
+        "TRMB",
+        "ZETA"
       ]
     },
     {
@@ -1730,10 +1722,10 @@
       "cluster_id": 112,
       "size": 4,
       "members": [
-        "LPX",
-        "OC",
-        "TREX",
-        "WFG"
+        "LASE",
+        "RIVN",
+        "XLY",
+        "XPON"
       ]
     },
     {
@@ -1741,10 +1733,32 @@
       "cluster_id": 113,
       "size": 4,
       "members": [
+        "LPX",
+        "OC",
+        "TREX",
+        "WFG"
+      ]
+    },
+    {
+      "cluster_rank": 114,
+      "cluster_id": 114,
+      "size": 4,
+      "members": [
         "PINS",
         "RDDT",
         "SNAP",
         "UBER"
+      ]
+    },
+    {
+      "cluster_rank": 115,
+      "cluster_id": 115,
+      "size": 4,
+      "members": [
+        "SPWR",
+        "TSLA",
+        "TSLL",
+        "TSYY"
       ]
     }
   ]
