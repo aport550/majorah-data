@@ -1,0 +1,59 @@
+name: Test Supabase Convictions
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-connection:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install requests
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+
+      - name: Test Supabase connection
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          python - <<'PY'
+          import os
+          import requests
+
+          url = (os.getenv("SUPABASE_URL") or "").strip()
+          key = (os.getenv("SUPABASE_SERVICE_ROLE_KEY") or "").strip()
+
+          print("URL present:", bool(url))
+          print("KEY present:", bool(key))
+          print("URL:", url)
+          print("KEY prefix:", key[:20] if key else "")
+
+          if not url:
+              raise Exception("Missing SUPABASE_URL")
+          if not key:
+              raise Exception("Missing SUPABASE_SERVICE_ROLE_KEY")
+
+          headers = {
+              "apikey": key,
+              "Authorization": f"Bearer {key}",
+          }
+
+          test_url = f"{url}/rest/v1/convictions?select=id,ticker&limit=3"
+          r = requests.get(test_url, headers=headers, timeout=30)
+
+          print("Status code:", r.status_code)
+          print("Response preview:", r.text[:500])
+
+          r.raise_for_status()
+          print("Supabase connection works.")
+          PY
