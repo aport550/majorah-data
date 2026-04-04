@@ -1,5 +1,6 @@
 import os
 import math
+import time
 import traceback
 from datetime import datetime, timedelta, date
 from zoneinfo import ZoneInfo
@@ -22,7 +23,6 @@ def get_env(name: str, required: bool = True, default: str | None = None) -> str
 
 
 SUPABASE_URL = get_env("SUPABASE_URL")
-# Support either old service_role or newer secret key naming.
 SUPABASE_KEY = (
     os.getenv("SUPABASE_SERVICE_ROLE_KEY")
     or os.getenv("SUPABASE_SECRET_KEY")
@@ -66,20 +66,37 @@ def parse_datetime(value) -> datetime | None:
     return None
 
 
-def is_finite_number(value) -> bool:
-    try:
-        x = float(value)
-        return math.isfinite(x)
-    except Exception:
-        return False
-
-
 def safe_float(value) -> float | None:
     try:
         x = float(value)
         return x if math.isfinite(x) else None
     except Exception:
         return None
+
+
+def execute_with_retry(builder, label: str, attempts: int = 5, base_sleep: float = 1.5):
+    """
+    Retry Supabase/PostgREST execute() calls to handle intermittent HTTP/2 stream reset issues.
+    """
+    last_exc = None
+
+    for attempt in range(1, attempts + 1):
+        try:
+            return builder.execute()
+        except Exception as exc:
+            last_exc = exc
+            if attempt == attempts:
+                print(f"[{label}] failed after {attempts} attempts")
+                raise
+
+            sleep_for = base_sleep * (2 ** (attempt - 1))
+            print(
+                f"[{label}] attempt {attempt}/{attempts} failed: {exc.__class__.__name__}: {exc}. "
+                f"Retrying in {sleep_for:.1f}s..."
+            )
+            time.sleep(sleep_for)
+
+    raise last_exc
 
 
 def fetch_history(ticker: str, start_date: date, end_date: date):
@@ -103,10 +120,6 @@ def fetch_history(ticker: str, start_date: date, end_date: date):
 
 
 def first_trading_open_on_or_after(ticker: str, target_date: date) -> tuple[date | None, float | None]:
-    """
-    Find the first trading day on or after target_date and return its open.
-    Searches forward up to 14 calendar days to handle weekends/holidays.
-    """
     search_end = target_date + timedelta(days=14)
     df = fetch_history(ticker, target_date, search_end + timedelta(days=1))
 
@@ -123,10 +136,6 @@ def first_trading_open_on_or_after(ticker: str, target_date: date) -> tuple[date
 
 
 def last_close_on_or_before(ticker: str, target_date: date) -> tuple[date | None, float | None]:
-    """
-    Find the last trading day on or before target_date and return its close.
-    Searches backward 14 calendar days to handle weekends/holidays.
-    """
     search_start = target_date - timedelta(days=14)
     df = fetch_history(ticker, search_start, target_date + timedelta(days=1))
 
@@ -149,9 +158,6 @@ def last_close_on_or_before(ticker: str, target_date: date) -> tuple[date | None
 
 
 def most_recent_close(ticker: str) -> tuple[date | None, float | None]:
-    """
-    Get the most recent available daily close from the last ~10 calendar days.
-    """
     end_date = today_ny()
     start_date = end_date - timedelta(days=10)
     df = fetch_history(ticker, start_date, end_date + timedelta(days=1))
@@ -170,12 +176,11 @@ def most_recent_close(ticker: str) -> tuple[date | None, float | None]:
 
 
 def load_convictions() -> list[dict]:
-    response = (
-        supabase.table("convictions")
-        .select(
+    response = execute_with_retry(
+        supabase.table("convictions").select(
             "id,user_id,ticker,confidence,timeline,rationale,created_at,start_date,end_date,start_price,latest_price,is_closed,closed_at"
-        )
-        .execute()
+        ),
+        label="load_convictions",
     )
     return response.data or []
 
@@ -183,7 +188,11 @@ def load_convictions() -> list[dict]:
 def update_conviction(conviction_id: str, payload: dict) -> None:
     if not payload:
         return
-    supabase.table("convictions").update(payload).eq("id", conviction_id).execute()
+
+    execute_with_retry(
+        supabase.table("convictions").update(payload).eq("id", conviction_id),
+        label=f"update_conviction:{conviction_id}",
+    )
 
 
 def process_conviction(row: dict) -> dict:
@@ -192,7 +201,6 @@ def process_conviction(row: dict) -> dict:
     start_date = parse_date(row.get("start_date"))
     end_date = parse_date(row.get("end_date"))
     start_price = safe_float(row.get("start_price"))
-    latest_price = safe_float(row.get("latest_price"))
     is_closed = bool(row.get("is_closed"))
     closed_at = parse_datetime(row.get("closed_at"))
     today = today_ny()
@@ -215,8 +223,6 @@ def process_conviction(row: dict) -> dict:
 
     payload = {}
 
-    # 1) Ensure start_price is set from the first trading day's OPEN on/after start_date,
-    # and normalize start_date to that actual trading date if needed.
     if start_price is None:
         actual_start_date, actual_open = first_trading_open_on_or_after(ticker, start_date)
         if actual_start_date is not None and actual_open is not None:
@@ -232,14 +238,11 @@ def process_conviction(row: dict) -> dict:
         else:
             result["notes"].append("Could not find first trading day/open yet")
 
-    # 2) If conviction has expired, freeze latest_price to final close on/before end_date
-    # and mark closed.
     if end_date < today:
         final_date, final_close = last_close_on_or_before(ticker, end_date)
 
         if final_date is not None and final_close is not None:
             payload["latest_price"] = final_close
-            latest_price = final_close
             result["notes"].append(
                 f"Set final latest_price={final_close:.4f} using close from {final_date.isoformat()}"
             )
@@ -252,19 +255,16 @@ def process_conviction(row: dict) -> dict:
                 payload["closed_at"] = datetime.now(NY_TZ).isoformat()
             result["notes"].append("Marked conviction closed")
 
-    # 3) If conviction is still open and has started, update latest_price to most recent close.
     elif start_date <= today:
         recent_date, recent_close = most_recent_close(ticker)
         if recent_date is not None and recent_close is not None:
             payload["latest_price"] = recent_close
-            latest_price = recent_close
             result["notes"].append(
                 f"Updated latest_price={recent_close:.4f} using close from {recent_date.isoformat()}"
             )
         else:
             result["notes"].append("Could not get recent close")
 
-    # 4) Persist any updates.
     if payload:
         update_conviction(conviction_id, payload)
         result["updated"] = True
@@ -286,6 +286,7 @@ def main():
         try:
             result = process_conviction(row)
             prefix = f"[{ticker} | {conviction_id}]"
+
             if result["error"]:
                 error_count += 1
                 print(f"{prefix} ERROR: {result['error']}")
