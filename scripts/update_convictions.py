@@ -40,7 +40,6 @@ def parse_date(value):
     if not value:
         return None
     try:
-        # handles both 'YYYY-MM-DD' and full ISO strings
         return datetime.fromisoformat(str(value).replace("Z", "+00:00")).date()
     except Exception:
         return None
@@ -83,7 +82,6 @@ def fetch_latest_price_live(ticker):
     try:
         t = yf.Ticker(ticker)
 
-        # 1) fast_info
         try:
             fast = getattr(t, "fast_info", None)
             if fast:
@@ -93,7 +91,6 @@ def fetch_latest_price_live(ticker):
         except Exception as e:
             print(f"{ticker}: fast_info failed: {e}")
 
-        # 2) recent history fallback
         for period, interval in [
             ("1d", "1m"),
             ("5d", "15m"),
@@ -110,7 +107,6 @@ def fetch_latest_price_live(ticker):
             except Exception as e:
                 print(f"{ticker}: history {period}/{interval} failed: {e}")
 
-        # 3) info fallback
         try:
             info = t.info
             price = info.get("regularMarketPrice")
@@ -202,11 +198,9 @@ def main():
 
         payload = {}
 
-        # ---------------------------------------------------------
         # 1) ENTRY FILL
         # Fill ONLY from historical OPEN on/after stored start_date.
         # Never use today's live price as a substitute.
-        # ---------------------------------------------------------
         if existing_start_price is None:
             if start_date is None:
                 print(f"{ticker}: no start_date, cannot fill entry")
@@ -226,12 +220,9 @@ def main():
             else:
                 print(f"{ticker}: entry not due yet")
 
-        # ---------------------------------------------------------
         # 2) EXIT FILL
         # If expiry date has arrived/passed, close ONLY from the
         # historical OPEN on/after stored end_date.
-        # This is what protects you if the script runs late.
-        # ---------------------------------------------------------
         should_attempt_close = end_date is not None and today_utc >= end_date
 
         if should_attempt_close and existing_close_price is None:
@@ -251,12 +242,9 @@ def main():
             else:
                 print(f"{ticker}: close open not available yet for end_date={end_date}")
 
-        # ---------------------------------------------------------
         # 3) LIVE MARK UPDATE FOR STILL-OPEN POSITIONS
-        # Only do this if:
-        # - entry has already been filled
-        # - conviction is not being closed in this run
-        # ---------------------------------------------------------
+        # Only do this if entry has already been filled and the conviction
+        # is not being closed in this run.
         is_closing_now = payload.get("is_closed") is True
 
         if existing_start_price is not None and not is_closing_now:
@@ -267,9 +255,7 @@ def main():
             else:
                 print(f"{ticker}: could not fetch live latest price")
 
-        # ---------------------------------------------------------
-        # 4) WRITE IF THERE IS SOMETHING REAL TO UPDATE
-        # ---------------------------------------------------------
+        # 4) WRITE IF THERE IS SOMETHING TO UPDATE
         if payload:
             payload["notes"] = f"Updated at {now_utc.isoformat()}"
 
