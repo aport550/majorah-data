@@ -46,6 +46,7 @@ jobs:
             scripts/build_sectors.py \
             scripts/build_fundamental_trends.py \
             scripts/build_stock_balance_sheet_dilution.py \
+            scripts/build_stock_screener.py \
             scripts/update_convictions.py
           do
             if [ ! -f "$f" ]; then
@@ -107,7 +108,9 @@ jobs:
       - name: Build stock balance sheet and dilution metrics
         run: python scripts/build_stock_balance_sheet_dilution.py
 
-      # 🔥 NEW STEP — UPDATE CONVICTIONS
+      - name: Build stock screener
+        run: python scripts/build_stock_screener.py
+
       - name: Update convictions (Supabase)
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -127,6 +130,7 @@ jobs:
           test -f data/macro_dimension_scores.csv
           test -f data/stock_macro_exposures.csv
           test -f data/stock_balance_sheet_dilution.csv
+          test -f data/stock_screener.csv
 
           test -f public/data/clusters.json
           test -f public/data/top_correlations.json
@@ -139,6 +143,8 @@ jobs:
           test -f public/data/macro_dimension_scores.json
           test -f public/data/stock_macro_exposures.json
           test -f public/data/stock_balance_sheet_dilution.json
+          test -f public/data/stock_screener.json
+          test -f public/data/stock_screener.csv
 
           test -f public/data/return_decomposition_summary.json
           test -f public/data/return_decomposition_index.json
@@ -152,6 +158,8 @@ jobs:
           ls -lah public/data/return_decomposition_summary.json
           ls -lah public/data/return_decomposition_index.json
           ls -lah public/data/stock_balance_sheet_dilution.json || true
+          ls -lah public/data/stock_screener.json || true
+          ls -lah public/data/stock_screener.csv || true
           du -sh public/data/return_decomposition_shards || true
           find public/data/return_decomposition_shards -maxdepth 1 -name 'shard_*.json' -exec ls -lah {} \;
 
@@ -165,6 +173,7 @@ jobs:
             data/macro_dimension_scores.csv
             data/stock_macro_exposures.csv
             data/stock_balance_sheet_dilution.csv
+            data/stock_screener.csv
             public/data/clusters.json
             public/data/top_correlations.json
             public/data/vols.json
@@ -176,6 +185,8 @@ jobs:
             public/data/macro_dimension_scores.json
             public/data/stock_macro_exposures.json
             public/data/stock_balance_sheet_dilution.json
+            public/data/stock_screener.json
+            public/data/stock_screener.csv
             public/data/return_decomposition_summary.json
             public/data/return_decomposition_index.json
             public/data/return_decomposition_shards
@@ -197,6 +208,7 @@ jobs:
             data/macro_dimension_scores.csv \
             data/stock_macro_exposures.csv \
             data/stock_balance_sheet_dilution.csv \
+            data/stock_screener.csv \
             public/data/clusters.json \
             public/data/top_correlations.json \
             public/data/dividends.json \
@@ -208,6 +220,8 @@ jobs:
             public/data/macro_dimension_scores.json \
             public/data/stock_macro_exposures.json \
             public/data/stock_balance_sheet_dilution.json \
+            public/data/stock_screener.json \
+            public/data/stock_screener.csv \
             public/data/return_decomposition_summary.json \
             public/data/return_decomposition_index.json \
             public/data/return_decomposition_shards
@@ -221,7 +235,7 @@ jobs:
             echo "No changes to commit."
             echo "HAS_CHANGES=false" >> $GITHUB_ENV
           else
-            git commit -m "Auto update return matrix + convictions"
+            git commit -m "Auto update return matrix + screener + convictions"
             echo "HAS_CHANGES=true" >> $GITHUB_ENV
           fi
 
