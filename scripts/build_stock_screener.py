@@ -13,9 +13,6 @@ PAUSE_SECS = 1.0
 
 
 def normalize_for_yahoo(t: str) -> str:
-    """
-    Yahoo uses '-' instead of '.' for class shares, e.g. BRK.B -> BRK-B
-    """
     t = str(t).strip().upper()
     if not t:
         return ""
@@ -28,9 +25,10 @@ def safe_float(x):
     try:
         if pd.isna(x):
             return None
-        if isinstance(x, (np.integer, np.floating)):
-            return float(x)
-        return float(x)
+        x = float(x)
+        if not np.isfinite(x):
+            return None
+        return x
     except Exception:
         return None
 
@@ -40,7 +38,7 @@ def safe_div(a, b):
     b = safe_float(b)
     if a is None or b is None or b == 0:
         return None
-    return a / b
+    return safe_float(a / b)
 
 
 def get_first(info: dict, keys):
@@ -54,6 +52,31 @@ def get_first(info: dict, keys):
 def chunk_list(lst, n):
     for i in range(0, len(lst), n):
         yield lst[i : i + n]
+
+
+def clean_json_value(x):
+    if x is None:
+        return None
+
+    try:
+        if pd.isna(x):
+            return None
+    except Exception:
+        pass
+
+    if isinstance(x, (np.integer, int)):
+        return int(x)
+
+    if isinstance(x, (np.floating, float)):
+        if not np.isfinite(x):
+            return None
+        return float(x)
+
+    return x
+
+
+def clean_record(record):
+    return {k: clean_json_value(v) for k, v in record.items()}
 
 
 def build_row(ticker: str) -> dict:
@@ -72,11 +95,6 @@ def build_row(ticker: str) -> dict:
         bs = pd.DataFrame()
 
     try:
-        fin = yf_ticker.financials
-    except Exception:
-        fin = pd.DataFrame()
-
-    try:
         cf = yf_ticker.cashflow
     except Exception:
         cf = pd.DataFrame()
@@ -93,81 +111,52 @@ def build_row(ticker: str) -> dict:
 
         return None
 
-    # Yahoo info fields
     name = get_first(info, ["longName", "shortName", "displayName"])
+
     market_cap = safe_float(info.get("marketCap"))
     enterprise_value = safe_float(info.get("enterpriseValue"))
-
-    revenue = safe_float(
-        get_first(info, ["totalRevenue", "revenue"])
-    )
-
-    eps = safe_float(
-        get_first(info, ["trailingEps", "epsTrailingTwelveMonths"])
-    )
-
+    revenue = safe_float(get_first(info, ["totalRevenue", "revenue"]))
+    eps = safe_float(get_first(info, ["trailingEps", "epsTrailingTwelveMonths"]))
     ebitda = safe_float(info.get("ebitda"))
-
-    cash = safe_float(
-        get_first(info, ["totalCash", "cash"])
-    )
-
-    debt = safe_float(
-        get_first(info, ["totalDebt", "debt"])
-    )
-
+    cash = safe_float(get_first(info, ["totalCash", "cash"]))
+    debt = safe_float(get_first(info, ["totalDebt", "debt"]))
     shares_outstanding = safe_float(
         get_first(info, ["sharesOutstanding", "impliedSharesOutstanding"])
     )
 
-    equity = safe_float(
-        get_first(info, ["bookValue"])
-    )
-
-    # If bookValue is per share, convert to total equity when possible
-    if equity is not None and shares_outstanding is not None:
-        equity = equity * shares_outstanding
+    book_value_per_share = safe_float(info.get("bookValue"))
+    equity = None
+    if book_value_per_share is not None and shares_outstanding is not None:
+        equity = safe_float(book_value_per_share * shares_outstanding)
 
     current_assets = latest_statement_value(
         bs,
-        [
-            "Current Assets",
-            "Total Current Assets",
-        ],
+        ["Current Assets", "Total Current Assets"],
     )
 
     current_liabilities = latest_statement_value(
         bs,
-        [
-            "Current Liabilities",
-            "Total Current Liabilities",
-        ],
+        ["Current Liabilities", "Total Current Liabilities"],
     )
 
     working_capital = None
     if current_assets is not None and current_liabilities is not None:
-        working_capital = current_assets - current_liabilities
+        working_capital = safe_float(current_assets - current_liabilities)
 
     ocf = latest_statement_value(
         cf,
-        [
-            "Operating Cash Flow",
-            "Total Cash From Operating Activities",
-        ],
+        ["Operating Cash Flow", "Total Cash From Operating Activities"],
     )
 
     capex = latest_statement_value(
         cf,
-        [
-            "Capital Expenditure",
-            "Capital Expenditures",
-        ],
+        ["Capital Expenditure", "Capital Expenditures"],
     )
 
-    # Yahoo usually reports capex as negative cash flow.
     fcf = None
     if ocf is not None and capex is not None:
-        fcf = ocf + capex
+        # Yahoo usually reports capex as negative cash flow.
+        fcf = safe_float(ocf + capex)
 
     peg = safe_float(info.get("pegRatio"))
     pb = safe_float(info.get("priceToBook"))
@@ -182,12 +171,10 @@ def build_row(ticker: str) -> dict:
 
     debt_equity = safe_float(info.get("debtToEquity"))
     if debt_equity is not None:
-        debt_equity = debt_equity / 100.0
+        debt_equity = safe_float(debt_equity / 100.0)
 
     current_ratio = safe_float(info.get("currentRatio"))
 
-    # Buyback yield approximation:
-    # Yahoo does not reliably expose net buybacks from info.
     repurchase = latest_statement_value(
         cf,
         [
@@ -199,22 +186,17 @@ def build_row(ticker: str) -> dict:
 
     buyback_yield = None
     if repurchase is not None and market_cap not in [None, 0]:
-        # Repurchase is often negative cash flow. Make yield positive if buybacks occurred.
-        buyback_yield = -repurchase / market_cap
+        buyback_yield = safe_float(-repurchase / market_cap)
 
-    # Fallback EV if Yahoo doesn't provide it
     if enterprise_value is None and market_cap is not None:
-        enterprise_value = market_cap + (debt or 0) - (cash or 0)
+        enterprise_value = safe_float(market_cap + (debt or 0) - (cash or 0))
 
-    # Fallback P/B if missing
     if pb is None and market_cap is not None and equity not in [None, 0]:
-        pb = market_cap / equity
+        pb = safe_float(market_cap / equity)
 
-    # Fallback D/E if missing
     if debt_equity is None and debt is not None and equity not in [None, 0]:
-        debt_equity = debt / equity
+        debt_equity = safe_float(debt / equity)
 
-    # Fallback current ratio
     if current_ratio is None:
         current_ratio = safe_div(current_assets, current_liabilities)
 
@@ -252,7 +234,6 @@ def build_row(ticker: str) -> dict:
 
 def main():
     universe_path = "data/universe.csv"
-
     universe = pd.read_csv(universe_path)
 
     if "Ticker" not in universe.columns:
@@ -289,8 +270,7 @@ def main():
         for ticker in batch:
             try:
                 print(f"Fetching {ticker}...")
-                row = build_row(ticker)
-                rows.append(row)
+                rows.append(build_row(ticker))
             except Exception as e:
                 print(f"{ticker}: hard failed: {e}")
                 failed.append({"ticker": ticker, "error": str(e)})
@@ -335,6 +315,8 @@ def main():
 
     df = df[[c for c in column_order if c in df.columns]]
 
+    df = df.replace([np.inf, -np.inf], np.nan)
+
     os.makedirs("data", exist_ok=True)
     os.makedirs("public/data", exist_ok=True)
 
@@ -344,6 +326,9 @@ def main():
 
     df.to_csv(csv_path, index=False)
     df.to_csv(public_csv_path, index=False)
+
+    records = df.to_dict(orient="records")
+    records = [clean_record(r) for r in records]
 
     payload = {
         "as_of": dt.date.today().isoformat(),
@@ -377,11 +362,11 @@ def main():
             "debtEquity": "decimal",
             "currentRatio": "ratio",
         },
-        "data": df.replace({np.nan: None}).to_dict(orient="records"),
+        "data": records,
     }
 
     with open(json_path, "w", encoding="utf-8") as f:
-        json.dump(payload, f, indent=2)
+        json.dump(payload, f, indent=2, allow_nan=False)
 
     print(f"\nSaved {csv_path} ({os.path.getsize(csv_path)} bytes)")
     print(f"Saved {public_csv_path} ({os.path.getsize(public_csv_path)} bytes)")
