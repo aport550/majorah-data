@@ -11,6 +11,8 @@ import yfinance as yf
 BATCH_SIZE = 75
 PAUSE_SECS = 1.0
 
+FX_CACHE = {}
+
 
 def normalize_for_yahoo(t: str) -> str:
     t = str(t).strip().upper()
@@ -19,12 +21,47 @@ def normalize_for_yahoo(t: str) -> str:
     return t.replace(".", "-")
 
 
+def normalize_currency(c):
+    if c is None:
+        return None
+
+    c = str(c).strip()
+
+    if not c:
+        return None
+
+    if c in ["$", "US$", "USD"]:
+        return "USD"
+
+    # Yahoo often uses GBp / GBX for London prices quoted in pence.
+    # For monetary statement fields, we convert as GBP.
+    if c.upper() in ["GBP", "GBX", "GBP=X"]:
+        return "GBP"
+
+    if c in ["GBp", "GBp=X"]:
+        return "GBp"
+
+    return c.upper()
+
+
+def money_currency(c):
+    c = normalize_currency(c)
+    if c in ["GBp", "GBX"]:
+        return "GBP"
+    return c
+
+
 def safe_float(x):
     if x is None:
         return None
+
     try:
         if pd.isna(x):
             return None
+    except Exception:
+        pass
+
+    try:
         x = float(x)
         if not np.isfinite(x):
             return None
@@ -36,9 +73,49 @@ def safe_float(x):
 def safe_div(a, b):
     a = safe_float(a)
     b = safe_float(b)
+
     if a is None or b is None or b == 0:
         return None
+
     return safe_float(a / b)
+
+
+def normalize_decimal_percent(x, divide_if_over=1.0):
+    """
+    Converts Yahoo percent-style values into decimals.
+
+    Examples:
+      2.5  -> 0.025
+      0.025 -> 0.025
+      45 -> 0.45
+      0.45 -> 0.45
+    """
+    x = safe_float(x)
+
+    if x is None:
+        return None
+
+    if abs(x) > divide_if_over:
+        return safe_float(x / 100.0)
+
+    return x
+
+
+def normalize_ratio_percent(x):
+    """
+    Useful for payout ratio, margins, debt/equity, etc.
+    Some Yahoo fields are decimals already.
+    Some are returned as 45 instead of 0.45.
+    """
+    x = safe_float(x)
+
+    if x is None:
+        return None
+
+    if abs(x) > 10:
+        return safe_float(x / 100.0)
+
+    return x
 
 
 def get_first(info: dict, keys):
@@ -79,6 +156,122 @@ def clean_record(record):
     return {k: clean_json_value(v) for k, v in record.items()}
 
 
+def latest_close(ticker):
+    try:
+        hist = yf.Ticker(ticker).history(period="7d", interval="1d", auto_adjust=False)
+        if hist is None or hist.empty or "Close" not in hist.columns:
+            return None
+
+        close = hist["Close"].dropna()
+        if close.empty:
+            return None
+
+        return safe_float(close.iloc[-1])
+    except Exception:
+        return None
+
+
+def get_fx_to_usd(currency):
+    """
+    Returns USD per 1 unit of currency.
+
+    Example:
+      EUR -> 1.07 means 1 EUR = 1.07 USD
+      JPY -> 0.0066 means 1 JPY = 0.0066 USD
+    """
+    currency = money_currency(currency)
+
+    if currency is None:
+        return None
+
+    if currency == "USD":
+        return 1.0
+
+    if currency in FX_CACHE:
+        return FX_CACHE[currency]
+
+    rate = None
+
+    # Direct pair: EURUSD=X means USD per EUR.
+    direct_pair = f"{currency}USD=X"
+    direct = latest_close(direct_pair)
+
+    if direct is not None and direct > 0:
+        rate = direct
+
+    # Inverse pair: USDJPY=X means JPY per USD, so invert.
+    if rate is None:
+        inverse_pair = f"USD{currency}=X"
+        inverse = latest_close(inverse_pair)
+
+        if inverse is not None and inverse > 0:
+            rate = 1.0 / inverse
+
+    # Yahoo aliases like JPY=X often mean USDJPY, so invert.
+    if rate is None:
+        alias_pair = f"{currency}=X"
+        alias = latest_close(alias_pair)
+
+        if alias is not None and alias > 0:
+            rate = 1.0 / alias
+
+    rate = safe_float(rate)
+    FX_CACHE[currency] = rate
+
+    return rate
+
+
+def money_to_usd(value, currency):
+    value = safe_float(value)
+
+    if value is None:
+        return None
+
+    currency = money_currency(currency)
+    rate = get_fx_to_usd(currency)
+
+    if rate is None:
+        return None
+
+    return safe_float(value * rate)
+
+
+def price_to_usd(value, quote_currency):
+    value = safe_float(value)
+
+    if value is None:
+        return None
+
+    quote_currency = normalize_currency(quote_currency)
+
+    # London prices are often quoted in pence.
+    if quote_currency == "GBp":
+        gbp_rate = get_fx_to_usd("GBP")
+        if gbp_rate is None:
+            return None
+        return safe_float((value / 100.0) * gbp_rate)
+
+    rate = get_fx_to_usd(quote_currency)
+
+    if rate is None:
+        return None
+
+    return safe_float(value * rate)
+
+
+def latest_statement_value(df, possible_rows):
+    if df is None or df.empty:
+        return None
+
+    for row_name in possible_rows:
+        if row_name in df.index:
+            series = df.loc[row_name].dropna()
+            if len(series) > 0:
+                return safe_float(series.iloc[0])
+
+    return None
+
+
 def build_row(ticker: str) -> dict:
     yahoo_ticker = normalize_for_yahoo(ticker)
     yf_ticker = yf.Ticker(yahoo_ticker)
@@ -95,87 +288,233 @@ def build_row(ticker: str) -> dict:
         bs = pd.DataFrame()
 
     try:
+        fin = yf_ticker.financials
+    except Exception:
+        fin = pd.DataFrame()
+
+    try:
         cf = yf_ticker.cashflow
     except Exception:
         cf = pd.DataFrame()
 
-    def latest_statement_value(df, possible_rows):
-        if df is None or df.empty:
-            return None
-
-        for row_name in possible_rows:
-            if row_name in df.index:
-                series = df.loc[row_name].dropna()
-                if len(series) > 0:
-                    return safe_float(series.iloc[0])
-
-        return None
-
     name = get_first(info, ["longName", "shortName", "displayName"])
 
-    market_cap = safe_float(info.get("marketCap"))
-    enterprise_value = safe_float(info.get("enterpriseValue"))
-    revenue = safe_float(get_first(info, ["totalRevenue", "revenue"]))
-    eps = safe_float(get_first(info, ["trailingEps", "epsTrailingTwelveMonths"]))
-    ebitda = safe_float(info.get("ebitda"))
-    cash = safe_float(get_first(info, ["totalCash", "cash"]))
-    debt = safe_float(get_first(info, ["totalDebt", "debt"]))
+    quote_currency = normalize_currency(
+        get_first(info, ["currency", "quoteCurrency"])
+    ) or "USD"
+
+    financial_currency = normalize_currency(
+        get_first(info, ["financialCurrency", "currency"])
+    ) or quote_currency
+
+    quote_fx_to_usd = get_fx_to_usd(quote_currency)
+    financial_fx_to_usd = get_fx_to_usd(financial_currency)
+
+    # -------------------------
+    # Price / market values
+    # -------------------------
+    price_raw = safe_float(
+        get_first(
+            info,
+            [
+                "currentPrice",
+                "regularMarketPrice",
+                "previousClose",
+            ],
+        )
+    )
+
+    price = price_to_usd(price_raw, quote_currency)
+
+    market_cap_raw = safe_float(info.get("marketCap"))
+    enterprise_value_raw = safe_float(info.get("enterpriseValue"))
+
+    market_cap = money_to_usd(market_cap_raw, quote_currency)
+    enterprise_value = money_to_usd(enterprise_value_raw, quote_currency)
+
     shares_outstanding = safe_float(
         get_first(info, ["sharesOutstanding", "impliedSharesOutstanding"])
     )
 
-    book_value_per_share = safe_float(info.get("bookValue"))
-    equity = None
-    if book_value_per_share is not None and shares_outstanding is not None:
-        equity = safe_float(book_value_per_share * shares_outstanding)
+    # -------------------------
+    # Income statement
+    # -------------------------
+    revenue_raw = latest_statement_value(
+        fin,
+        [
+            "Total Revenue",
+            "Operating Revenue",
+            "Revenue",
+        ],
+    )
 
-    current_assets = latest_statement_value(
+    if revenue_raw is None:
+        revenue_raw = safe_float(get_first(info, ["totalRevenue", "revenue"]))
+
+    revenue = money_to_usd(revenue_raw, financial_currency)
+
+    ebitda_raw = latest_statement_value(
+        fin,
+        [
+            "EBITDA",
+            "Normalized EBITDA",
+        ],
+    )
+
+    if ebitda_raw is None:
+        ebitda_raw = safe_float(info.get("ebitda"))
+
+    ebitda = money_to_usd(ebitda_raw, financial_currency)
+
+    eps_raw = safe_float(
+        get_first(info, ["trailingEps", "epsTrailingTwelveMonths"])
+    )
+
+    eps = price_to_usd(eps_raw, quote_currency)
+
+    # -------------------------
+    # Balance sheet
+    # -------------------------
+    cash_raw = latest_statement_value(
         bs,
-        ["Current Assets", "Total Current Assets"],
+        [
+            "Cash And Cash Equivalents",
+            "Cash Cash Equivalents And Short Term Investments",
+            "Cash",
+        ],
     )
 
-    current_liabilities = latest_statement_value(
+    if cash_raw is None:
+        cash_raw = safe_float(get_first(info, ["totalCash", "cash"]))
+
+    cash = money_to_usd(cash_raw, financial_currency)
+
+    debt_raw = latest_statement_value(
         bs,
-        ["Current Liabilities", "Total Current Liabilities"],
+        [
+            "Total Debt",
+            "Long Term Debt And Capital Lease Obligation",
+            "Long Term Debt",
+        ],
     )
 
-    working_capital = None
-    if current_assets is not None and current_liabilities is not None:
-        working_capital = safe_float(current_assets - current_liabilities)
+    if debt_raw is None:
+        debt_raw = safe_float(get_first(info, ["totalDebt", "debt"]))
 
-    ocf = latest_statement_value(
+    debt = money_to_usd(debt_raw, financial_currency)
+
+    equity_statement_raw = latest_statement_value(
+        bs,
+        [
+            "Stockholders Equity",
+            "Common Stock Equity",
+            "Total Equity Gross Minority Interest",
+            "Total Stockholder Equity",
+        ],
+    )
+
+    equity_raw = equity_statement_raw
+    equity_raw_currency = financial_currency
+
+    if equity_raw is None:
+        book_value_per_share_raw = safe_float(info.get("bookValue"))
+        if book_value_per_share_raw is not None and shares_outstanding is not None:
+            equity_raw = safe_float(book_value_per_share_raw * shares_outstanding)
+            equity_raw_currency = quote_currency
+
+    equity = money_to_usd(equity_raw, equity_raw_currency)
+
+    tangible_book_value_raw = latest_statement_value(
+        bs,
+        [
+            "Tangible Book Value",
+        ],
+    )
+
+    if tangible_book_value_raw is None and equity_statement_raw is not None:
+        goodwill_and_intangibles_raw = latest_statement_value(
+            bs,
+            [
+                "Goodwill And Other Intangible Assets",
+            ],
+        )
+
+        if goodwill_and_intangibles_raw is None:
+            goodwill_raw = latest_statement_value(bs, ["Goodwill"])
+            intangibles_raw = latest_statement_value(
+                bs,
+                [
+                    "Other Intangible Assets",
+                    "Other Intangibles",
+                    "Intangible Assets",
+                ],
+            )
+
+            goodwill_and_intangibles_raw = safe_float(
+                (goodwill_raw or 0) + (intangibles_raw or 0)
+            )
+
+        tangible_book_value_raw = safe_float(
+            equity_statement_raw - (goodwill_and_intangibles_raw or 0)
+        )
+
+    tangible_book_value = money_to_usd(tangible_book_value_raw, financial_currency)
+
+    current_assets_raw = latest_statement_value(
+        bs,
+        [
+            "Current Assets",
+            "Total Current Assets",
+        ],
+    )
+
+    current_liabilities_raw = latest_statement_value(
+        bs,
+        [
+            "Current Liabilities",
+            "Total Current Liabilities",
+        ],
+    )
+
+    working_capital_raw = None
+    if current_assets_raw is not None and current_liabilities_raw is not None:
+        working_capital_raw = safe_float(current_assets_raw - current_liabilities_raw)
+
+    working_capital = money_to_usd(working_capital_raw, financial_currency)
+
+    current_ratio = normalize_ratio_percent(info.get("currentRatio"))
+
+    if current_ratio is None:
+        current_ratio = safe_div(current_assets_raw, current_liabilities_raw)
+
+    # -------------------------
+    # Cash flow
+    # -------------------------
+    ocf_raw = latest_statement_value(
         cf,
-        ["Operating Cash Flow", "Total Cash From Operating Activities"],
+        [
+            "Operating Cash Flow",
+            "Total Cash From Operating Activities",
+        ],
     )
 
-    capex = latest_statement_value(
+    capex_raw = latest_statement_value(
         cf,
-        ["Capital Expenditure", "Capital Expenditures"],
+        [
+            "Capital Expenditure",
+            "Capital Expenditures",
+        ],
     )
+
+    ocf = money_to_usd(ocf_raw, financial_currency)
+    capex = money_to_usd(capex_raw, financial_currency)
 
     fcf = None
     if ocf is not None and capex is not None:
         # Yahoo usually reports capex as negative cash flow.
         fcf = safe_float(ocf + capex)
 
-    peg = safe_float(info.get("pegRatio"))
-    pb = safe_float(info.get("priceToBook"))
-    forward_pe = safe_float(info.get("forwardPE"))
-
-    dividend_yield = safe_float(info.get("dividendYield"))
-    payout_ratio = safe_float(info.get("payoutRatio"))
-
-    gross_margin = safe_float(info.get("grossMargins"))
-    operating_margin = safe_float(info.get("operatingMargins"))
-    profit_margin = safe_float(info.get("profitMargins"))
-
-    debt_equity = safe_float(info.get("debtToEquity"))
-    if debt_equity is not None:
-        debt_equity = safe_float(debt_equity / 100.0)
-
-    current_ratio = safe_float(info.get("currentRatio"))
-
-    repurchase = latest_statement_value(
+    repurchase_raw = latest_statement_value(
         cf,
         [
             "Repurchase Of Capital Stock",
@@ -184,25 +523,81 @@ def build_row(ticker: str) -> dict:
         ],
     )
 
+    repurchase = money_to_usd(repurchase_raw, financial_currency)
+
     buyback_yield = None
     if repurchase is not None and market_cap not in [None, 0]:
+        # Repurchases are usually negative cash flow. Make yield positive.
         buyback_yield = safe_float(-repurchase / market_cap)
+
+    # -------------------------
+    # Valuation / quality ratios
+    # -------------------------
+    peg = safe_float(info.get("pegRatio"))
+    forward_pe = safe_float(info.get("forwardPE"))
+
+    pb = safe_div(market_cap, equity)
+    if pb is None:
+        pb = safe_float(info.get("priceToBook"))
+
+    ptbv = safe_div(market_cap, tangible_book_value)
+
+    debt_equity = safe_div(debt, equity)
+
+    if debt_equity is None:
+        debt_equity = normalize_ratio_percent(info.get("debtToEquity"))
+
+    dividend_yield = normalize_decimal_percent(
+        info.get("dividendYield"),
+        divide_if_over=1.0,
+    )
+
+    payout_ratio = normalize_ratio_percent(info.get("payoutRatio"))
+
+    gross_margin = normalize_ratio_percent(info.get("grossMargins"))
+    operating_margin = normalize_ratio_percent(info.get("operatingMargins"))
+    profit_margin = normalize_ratio_percent(info.get("profitMargins"))
+
+    institutional_ownership = normalize_decimal_percent(
+        info.get("heldPercentInstitutions"),
+        divide_if_over=1.0,
+    )
+
+    growth_rate = normalize_ratio_percent(
+        get_first(
+            info,
+            [
+                "revenueGrowth",
+                "earningsGrowth",
+                "earningsQuarterlyGrowth",
+            ],
+        )
+    )
+
+    growth_rate_source = None
+    if info.get("revenueGrowth") is not None:
+        growth_rate_source = "revenueGrowth"
+    elif info.get("earningsGrowth") is not None:
+        growth_rate_source = "earningsGrowth"
+    elif info.get("earningsQuarterlyGrowth") is not None:
+        growth_rate_source = "earningsQuarterlyGrowth"
 
     if enterprise_value is None and market_cap is not None:
         enterprise_value = safe_float(market_cap + (debt or 0) - (cash or 0))
 
-    if pb is None and market_cap is not None and equity not in [None, 0]:
-        pb = safe_float(market_cap / equity)
-
-    if debt_equity is None and debt is not None and equity not in [None, 0]:
-        debt_equity = safe_float(debt / equity)
-
-    if current_ratio is None:
-        current_ratio = safe_div(current_assets, current_liabilities)
-
     return {
         "ticker": ticker,
         "name": name,
+
+        # New fields
+        "price": price,
+        "institutionalOwnership": institutional_ownership,
+        "growthRate": growth_rate,
+        "growthRateSource": growth_rate_source,
+        "tangibleBookValue": tangible_book_value,
+        "ptbv": ptbv,
+
+        # Existing screener fields
         "marketCap": market_cap,
         "enterpriseValue": enterprise_value,
         "revenue": revenue,
@@ -227,6 +622,17 @@ def build_row(ticker: str) -> dict:
         "profitMargin": profit_margin,
         "debtEquity": debt_equity,
         "currentRatio": current_ratio,
+
+        # Currency/debug fields
+        "outputCurrency": "USD",
+        "quoteCurrency": quote_currency,
+        "financialCurrency": financial_currency,
+        "quoteFxToUsd": quote_fx_to_usd,
+        "financialFxToUsd": financial_fx_to_usd,
+        "priceRaw": price_raw,
+        "marketCapRaw": market_cap_raw,
+        "revenueRaw": revenue_raw,
+
         "source": "yfinance",
         "yahooTicker": yahoo_ticker,
     }
@@ -285,6 +691,7 @@ def main():
     column_order = [
         "ticker",
         "name",
+        "price",
         "marketCap",
         "enterpriseValue",
         "revenue",
@@ -294,13 +701,18 @@ def main():
         "debt",
         "sharesOutstanding",
         "equity",
+        "tangibleBookValue",
         "workingCapital",
         "ocf",
         "fcf",
         "capex",
         "peg",
         "pb",
+        "ptbv",
         "forwardPE",
+        "institutionalOwnership",
+        "growthRate",
+        "growthRateSource",
         "buybackYield",
         "dividendYield",
         "payoutRatio",
@@ -309,12 +721,19 @@ def main():
         "profitMargin",
         "debtEquity",
         "currentRatio",
+        "outputCurrency",
+        "quoteCurrency",
+        "financialCurrency",
+        "quoteFxToUsd",
+        "financialFxToUsd",
+        "priceRaw",
+        "marketCapRaw",
+        "revenueRaw",
         "source",
         "yahooTicker",
     ]
 
     df = df[[c for c in column_order if c in df.columns]]
-
     df = df.replace([np.inf, -np.inf], np.nan)
 
     os.makedirs("data", exist_ok=True)
@@ -333,10 +752,12 @@ def main():
     payload = {
         "as_of": dt.date.today().isoformat(),
         "source": "yfinance",
+        "output_currency": "USD",
         "ticker_count": int(len(df)),
         "failed_count": int(len(failed)),
         "failed": failed[:100],
         "units": {
+            "price": "usd",
             "marketCap": "usd",
             "enterpriseValue": "usd",
             "revenue": "usd",
@@ -346,21 +767,27 @@ def main():
             "debt": "usd",
             "sharesOutstanding": "shares",
             "equity": "usd",
+            "tangibleBookValue": "usd",
             "workingCapital": "usd",
             "ocf": "usd",
             "fcf": "usd",
             "capex": "usd",
             "peg": "ratio",
             "pb": "ratio",
+            "ptbv": "ratio",
             "forwardPE": "ratio",
+            "institutionalOwnership": "decimal",
+            "growthRate": "decimal",
             "buybackYield": "decimal",
             "dividendYield": "decimal",
             "payoutRatio": "decimal",
             "grossMargin": "decimal",
             "operatingMargin": "decimal",
             "profitMargin": "decimal",
-            "debtEquity": "decimal",
+            "debtEquity": "ratio",
             "currentRatio": "ratio",
+            "quoteFxToUsd": "usd_per_quote_currency",
+            "financialFxToUsd": "usd_per_financial_currency",
         },
         "data": records,
     }
