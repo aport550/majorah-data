@@ -11,7 +11,12 @@ import yfinance as yf
 BATCH_SIZE = 75
 PAUSE_SECS = 1.0
 
+BENCHMARK_TICKER = "SPY"
+RSI_PERIOD = 14
+BETA_LOOKBACK_PERIOD = "1y"
+
 FX_CACHE = {}
+HISTORY_CACHE = {}
 
 
 def normalize_for_yahoo(t: str) -> str:
@@ -33,8 +38,6 @@ def normalize_currency(c):
     if c in ["$", "US$", "USD"]:
         return "USD"
 
-    # Yahoo often uses GBp / GBX for London prices quoted in pence.
-    # For monetary statement fields, we convert as GBP.
     if c.upper() in ["GBP", "GBX", "GBP=X"]:
         return "GBP"
 
@@ -81,15 +84,6 @@ def safe_div(a, b):
 
 
 def normalize_decimal_percent(x, divide_if_over=1.0):
-    """
-    Converts Yahoo percent-style values into decimals.
-
-    Examples:
-      2.5  -> 0.025
-      0.025 -> 0.025
-      45 -> 0.45
-      0.45 -> 0.45
-    """
     x = safe_float(x)
 
     if x is None:
@@ -102,11 +96,6 @@ def normalize_decimal_percent(x, divide_if_over=1.0):
 
 
 def normalize_ratio_percent(x):
-    """
-    Useful for payout ratio, margins, debt/equity, etc.
-    Some Yahoo fields are decimals already.
-    Some are returned as 45 instead of 0.45.
-    """
     x = safe_float(x)
 
     if x is None:
@@ -156,29 +145,105 @@ def clean_record(record):
     return {k: clean_json_value(v) for k, v in record.items()}
 
 
-def latest_close(ticker):
+def get_close_history(yahoo_ticker, period="1y"):
+    key = (yahoo_ticker, period)
+
+    if key in HISTORY_CACHE:
+        return HISTORY_CACHE[key]
+
     try:
-        hist = yf.Ticker(ticker).history(period="7d", interval="1d", auto_adjust=False)
+        hist = yf.Ticker(yahoo_ticker).history(
+            period=period,
+            interval="1d",
+            auto_adjust=True,
+        )
+
         if hist is None or hist.empty or "Close" not in hist.columns:
-            return None
+            HISTORY_CACHE[key] = pd.Series(dtype=float)
+            return HISTORY_CACHE[key]
 
         close = hist["Close"].dropna()
+
         if close.empty:
+            HISTORY_CACHE[key] = pd.Series(dtype=float)
+            return HISTORY_CACHE[key]
+
+        HISTORY_CACHE[key] = close.astype(float)
+        return HISTORY_CACHE[key]
+
+    except Exception:
+        HISTORY_CACHE[key] = pd.Series(dtype=float)
+        return HISTORY_CACHE[key]
+
+
+def latest_close(ticker):
+    close = get_close_history(ticker, period="7d")
+
+    if close is None or close.empty:
+        return None
+
+    return safe_float(close.iloc[-1])
+
+
+def compute_rsi(close, period=14):
+    if close is None or close.empty or len(close) <= period:
+        return None
+
+    try:
+        delta = close.diff()
+
+        gain = delta.clip(lower=0)
+        loss = -delta.clip(upper=0)
+
+        avg_gain = gain.ewm(alpha=1 / period, min_periods=period, adjust=False).mean()
+        avg_loss = loss.ewm(alpha=1 / period, min_periods=period, adjust=False).mean()
+
+        rs = avg_gain / avg_loss
+        rsi = 100 - (100 / (1 + rs))
+
+        last = rsi.dropna()
+
+        if last.empty:
             return None
 
-        return safe_float(close.iloc[-1])
+        return safe_float(last.iloc[-1])
+
+    except Exception:
+        return None
+
+
+def compute_beta(asset_close, benchmark_close):
+    if asset_close is None or benchmark_close is None:
+        return None
+
+    if asset_close.empty or benchmark_close.empty:
+        return None
+
+    try:
+        returns = pd.concat(
+            [
+                asset_close.pct_change().rename("asset"),
+                benchmark_close.pct_change().rename("benchmark"),
+            ],
+            axis=1,
+        ).dropna()
+
+        if len(returns) < 60:
+            return None
+
+        benchmark_var = returns["benchmark"].var()
+
+        if benchmark_var is None or benchmark_var == 0:
+            return None
+
+        beta = returns["asset"].cov(returns["benchmark"]) / benchmark_var
+        return safe_float(beta)
+
     except Exception:
         return None
 
 
 def get_fx_to_usd(currency):
-    """
-    Returns USD per 1 unit of currency.
-
-    Example:
-      EUR -> 1.07 means 1 EUR = 1.07 USD
-      JPY -> 0.0066 means 1 JPY = 0.0066 USD
-    """
     currency = money_currency(currency)
 
     if currency is None:
@@ -192,14 +257,12 @@ def get_fx_to_usd(currency):
 
     rate = None
 
-    # Direct pair: EURUSD=X means USD per EUR.
     direct_pair = f"{currency}USD=X"
     direct = latest_close(direct_pair)
 
     if direct is not None and direct > 0:
         rate = direct
 
-    # Inverse pair: USDJPY=X means JPY per USD, so invert.
     if rate is None:
         inverse_pair = f"USD{currency}=X"
         inverse = latest_close(inverse_pair)
@@ -207,7 +270,6 @@ def get_fx_to_usd(currency):
         if inverse is not None and inverse > 0:
             rate = 1.0 / inverse
 
-    # Yahoo aliases like JPY=X often mean USDJPY, so invert.
     if rate is None:
         alias_pair = f"{currency}=X"
         alias = latest_close(alias_pair)
@@ -244,7 +306,6 @@ def price_to_usd(value, quote_currency):
 
     quote_currency = normalize_currency(quote_currency)
 
-    # London prices are often quoted in pence.
     if quote_currency == "GBp":
         gbp_rate = get_fx_to_usd("GBP")
         if gbp_rate is None:
@@ -311,6 +372,15 @@ def build_row(ticker: str) -> dict:
     financial_fx_to_usd = get_fx_to_usd(financial_currency)
 
     # -------------------------
+    # Technical / price history metrics
+    # -------------------------
+    close_history = get_close_history(yahoo_ticker, period=BETA_LOOKBACK_PERIOD)
+    benchmark_close_history = get_close_history(BENCHMARK_TICKER, period=BETA_LOOKBACK_PERIOD)
+
+    rsi14 = compute_rsi(close_history, period=RSI_PERIOD)
+    beta = compute_beta(close_history, benchmark_close_history)
+
+    # -------------------------
     # Price / market values
     # -------------------------
     price_raw = safe_float(
@@ -324,7 +394,27 @@ def build_row(ticker: str) -> dict:
         )
     )
 
+    if price_raw is None and close_history is not None and not close_history.empty:
+        price_raw = safe_float(close_history.iloc[-1])
+
     price = price_to_usd(price_raw, quote_currency)
+
+    fifty_two_week_low_raw = safe_float(info.get("fiftyTwoWeekLow"))
+
+    if fifty_two_week_low_raw is None and close_history is not None and not close_history.empty:
+        fifty_two_week_low_raw = safe_float(close_history.min())
+
+    fifty_two_week_low = price_to_usd(fifty_two_week_low_raw, quote_currency)
+
+    pct_above_52_week_low = None
+    if price_raw is not None and fifty_two_week_low_raw not in [None, 0]:
+        pct_above_52_week_low = safe_float(
+            (price_raw - fifty_two_week_low_raw) / fifty_two_week_low_raw
+        )
+    elif price is not None and fifty_two_week_low not in [None, 0]:
+        pct_above_52_week_low = safe_float(
+            (price - fifty_two_week_low) / fifty_two_week_low
+        )
 
     market_cap_raw = safe_float(info.get("marketCap"))
     enterprise_value_raw = safe_float(info.get("enterpriseValue"))
@@ -511,7 +601,6 @@ def build_row(ticker: str) -> dict:
 
     fcf = None
     if ocf is not None and capex is not None:
-        # Yahoo usually reports capex as negative cash flow.
         fcf = safe_float(ocf + capex)
 
     repurchase_raw = latest_statement_value(
@@ -527,7 +616,6 @@ def build_row(ticker: str) -> dict:
 
     buyback_yield = None
     if repurchase is not None and market_cap not in [None, 0]:
-        # Repurchases are usually negative cash flow. Make yield positive.
         buyback_yield = safe_float(-repurchase / market_cap)
 
     # -------------------------
@@ -589,8 +677,15 @@ def build_row(ticker: str) -> dict:
         "ticker": ticker,
         "name": name,
 
-        # New fields
+        # Price / technical fields
         "price": price,
+        "rsi14": rsi14,
+        "beta": beta,
+        "betaBenchmark": BENCHMARK_TICKER,
+        "fiftyTwoWeekLow": fifty_two_week_low,
+        "pctAbove52WeekLow": pct_above_52_week_low,
+
+        # Ownership / growth / book value fields
         "institutionalOwnership": institutional_ownership,
         "growthRate": growth_rate,
         "growthRateSource": growth_rate_source,
@@ -630,6 +725,7 @@ def build_row(ticker: str) -> dict:
         "quoteFxToUsd": quote_fx_to_usd,
         "financialFxToUsd": financial_fx_to_usd,
         "priceRaw": price_raw,
+        "fiftyTwoWeekLowRaw": fifty_two_week_low_raw,
         "marketCapRaw": market_cap_raw,
         "revenueRaw": revenue_raw,
 
@@ -692,6 +788,11 @@ def main():
         "ticker",
         "name",
         "price",
+        "rsi14",
+        "beta",
+        "betaBenchmark",
+        "fiftyTwoWeekLow",
+        "pctAbove52WeekLow",
         "marketCap",
         "enterpriseValue",
         "revenue",
@@ -727,6 +828,7 @@ def main():
         "quoteFxToUsd",
         "financialFxToUsd",
         "priceRaw",
+        "fiftyTwoWeekLowRaw",
         "marketCapRaw",
         "revenueRaw",
         "source",
@@ -758,6 +860,10 @@ def main():
         "failed": failed[:100],
         "units": {
             "price": "usd",
+            "rsi14": "0_to_100",
+            "beta": f"vs_{BENCHMARK_TICKER}",
+            "fiftyTwoWeekLow": "usd",
+            "pctAbove52WeekLow": "decimal",
             "marketCap": "usd",
             "enterpriseValue": "usd",
             "revenue": "usd",
