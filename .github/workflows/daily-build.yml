@@ -47,6 +47,7 @@ jobs:
             scripts/build_fundamental_trends.py \
             scripts/build_stock_balance_sheet_dilution.py \
             scripts/build_stock_screener.py \
+            scripts/build_insider_trading.py \
             scripts/update_convictions.py
           do
             if [ ! -f "$f" ]; then
@@ -63,7 +64,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pandas numpy yfinance scipy requests supabase python-dotenv
+          pip install pandas numpy yfinance scipy requests beautifulsoup4 supabase python-dotenv
 
       - name: Create output directories
         run: |
@@ -111,6 +112,9 @@ jobs:
       - name: Build stock screener
         run: python scripts/build_stock_screener.py
 
+      - name: Build insider trading history
+        run: python scripts/build_insider_trading.py
+
       - name: Update convictions (Supabase)
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -131,6 +135,7 @@ jobs:
           test -f data/stock_macro_exposures.csv
           test -f data/stock_balance_sheet_dilution.csv
           test -f data/stock_screener.csv
+          test -f data/insider_trading_history.json
 
           test -f public/data/clusters.json
           test -f public/data/top_correlations.json
@@ -145,6 +150,8 @@ jobs:
           test -f public/data/stock_balance_sheet_dilution.json
           test -f public/data/stock_screener.json
           test -f public/data/stock_screener.csv
+          test -f public/data/insider_trading.json
+          test -f public/data/insider_trading_summary.json
 
           test -f public/data/return_decomposition_summary.json
           test -f public/data/return_decomposition_index.json
@@ -160,6 +167,9 @@ jobs:
           ls -lah public/data/stock_balance_sheet_dilution.json || true
           ls -lah public/data/stock_screener.json || true
           ls -lah public/data/stock_screener.csv || true
+          ls -lah data/insider_trading_history.json || true
+          ls -lah public/data/insider_trading.json || true
+          ls -lah public/data/insider_trading_summary.json || true
           du -sh public/data/return_decomposition_shards || true
           find public/data/return_decomposition_shards -maxdepth 1 -name 'shard_*.json' -exec ls -lah {} \;
 
@@ -174,6 +184,7 @@ jobs:
             data/stock_macro_exposures.csv
             data/stock_balance_sheet_dilution.csv
             data/stock_screener.csv
+            data/insider_trading_history.json
             public/data/clusters.json
             public/data/top_correlations.json
             public/data/vols.json
@@ -187,6 +198,8 @@ jobs:
             public/data/stock_balance_sheet_dilution.json
             public/data/stock_screener.json
             public/data/stock_screener.csv
+            public/data/insider_trading.json
+            public/data/insider_trading_summary.json
             public/data/return_decomposition_summary.json
             public/data/return_decomposition_index.json
             public/data/return_decomposition_shards
@@ -209,6 +222,7 @@ jobs:
             data/stock_macro_exposures.csv \
             data/stock_balance_sheet_dilution.csv \
             data/stock_screener.csv \
+            data/insider_trading_history.json \
             public/data/clusters.json \
             public/data/top_correlations.json \
             public/data/dividends.json \
@@ -222,6 +236,8 @@ jobs:
             public/data/stock_balance_sheet_dilution.json \
             public/data/stock_screener.json \
             public/data/stock_screener.csv \
+            public/data/insider_trading.json \
+            public/data/insider_trading_summary.json \
             public/data/return_decomposition_summary.json \
             public/data/return_decomposition_index.json \
             public/data/return_decomposition_shards
@@ -235,7 +251,7 @@ jobs:
             echo "No changes to commit."
             echo "HAS_CHANGES=false" >> $GITHUB_ENV
           else
-            git commit -m "Auto update return matrix + screener + convictions"
+            git commit -m "Auto update return matrix + screener + insider trading + convictions"
             echo "HAS_CHANGES=true" >> $GITHUB_ENV
           fi
 
