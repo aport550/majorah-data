@@ -48,6 +48,7 @@ jobs:
             scripts/build_stock_balance_sheet_dilution.py \
             scripts/build_stock_screener.py \
             scripts/build_insider_trading.py \
+            scripts/build_smart_money.py \
             scripts/update_convictions.py
           do
             if [ ! -f "$f" ]; then
@@ -115,6 +116,11 @@ jobs:
       - name: Build insider trading history
         run: python scripts/build_insider_trading.py
 
+      - name: Build smart money 13F data
+        env:
+          SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
+        run: python scripts/build_smart_money.py
+
       - name: Update convictions (Supabase)
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -153,6 +159,11 @@ jobs:
           test -f public/data/insider_trading.json
           test -f public/data/insider_trading_summary.json
 
+          test -f public/data/smart_money.json
+          test -f data/smart_money_raw.csv
+          test -f data/smart_money_fund_holdings.csv
+          test -f data/smart_money_unmapped_cusips.csv
+
           test -f public/data/return_decomposition_summary.json
           test -f public/data/return_decomposition_index.json
           test -d public/data/return_decomposition_shards
@@ -170,6 +181,10 @@ jobs:
           ls -lah data/insider_trading_history.json || true
           ls -lah public/data/insider_trading.json || true
           ls -lah public/data/insider_trading_summary.json || true
+          ls -lah public/data/smart_money.json || true
+          ls -lah data/smart_money_raw.csv || true
+          ls -lah data/smart_money_fund_holdings.csv || true
+          ls -lah data/smart_money_unmapped_cusips.csv || true
           du -sh public/data/return_decomposition_shards || true
           find public/data/return_decomposition_shards -maxdepth 1 -name 'shard_*.json' -exec ls -lah {} \;
 
@@ -185,6 +200,9 @@ jobs:
             data/stock_balance_sheet_dilution.csv
             data/stock_screener.csv
             data/insider_trading_history.json
+            data/smart_money_raw.csv
+            data/smart_money_fund_holdings.csv
+            data/smart_money_unmapped_cusips.csv
             public/data/clusters.json
             public/data/top_correlations.json
             public/data/vols.json
@@ -200,6 +218,7 @@ jobs:
             public/data/stock_screener.csv
             public/data/insider_trading.json
             public/data/insider_trading_summary.json
+            public/data/smart_money.json
             public/data/return_decomposition_summary.json
             public/data/return_decomposition_index.json
             public/data/return_decomposition_shards
@@ -223,6 +242,9 @@ jobs:
             data/stock_balance_sheet_dilution.csv \
             data/stock_screener.csv \
             data/insider_trading_history.json \
+            data/smart_money_raw.csv \
+            data/smart_money_fund_holdings.csv \
+            data/smart_money_unmapped_cusips.csv \
             public/data/clusters.json \
             public/data/top_correlations.json \
             public/data/dividends.json \
@@ -238,6 +260,7 @@ jobs:
             public/data/stock_screener.csv \
             public/data/insider_trading.json \
             public/data/insider_trading_summary.json \
+            public/data/smart_money.json \
             public/data/return_decomposition_summary.json \
             public/data/return_decomposition_index.json \
             public/data/return_decomposition_shards
@@ -251,7 +274,7 @@ jobs:
             echo "No changes to commit."
             echo "HAS_CHANGES=false" >> $GITHUB_ENV
           else
-            git commit -m "Auto update return matrix + screener + insider trading + convictions"
+            git commit -m "Auto update return matrix + screener + insider + smart money + convictions"
             echo "HAS_CHANGES=true" >> $GITHUB_ENV
           fi
 
