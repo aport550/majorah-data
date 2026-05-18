@@ -1,0 +1,107 @@
+{
+  "as_of": "2026-05-18T02:32:26Z",
+  "data": {},
+  "failure_count": 18,
+  "failures": [
+    {
+      "cik": "0001067983",
+      "error": "Expecting value: line 1 column 1 (char 0)",
+      "fundName": "Berkshire Hathaway"
+    },
+    {
+      "cik": "0001336528",
+      "error": "Expecting value: line 1 column 1 (char 0)",
+      "fundName": "Pershing Square"
+    },
+    {
+      "cik": "0001061768",
+      "error": "Expecting value: line 1 column 1 (char 0)",
+      "fundName": "Baupost Group"
+    },
+    {
+      "cik": "0001079114",
+      "error": "Expecting value: line 1 column 1 (char 0)",
+      "fundName": "Greenlight Capital"
+    },
+    {
+      "cik": "0001040273",
+      "error": "Expecting value: line 1 column 1 (char 0)",
+      "fundName": "Third Point"
+    },
+    {
+      "cik": "0001006438",
+      "error": "Expecting value: line 1 column 1 (char 0)",
+      "fundName": "Appaloosa"
+    },
+    {
+      "cik": "0001649339",
+      "error": "Expecting value: line 1 column 1 (char 0)",
+      "fundName": "Scion Asset Management"
+    },
+    {
+      "cik": "0001135730",
+      "error": "Expecting value: line 1 column 1 (char 0)",
+      "fundName": "Coatue Management"
+    },
+    {
+      "cik": "0001167483",
+      "error": "Expecting value: line 1 column 1 (char 0)",
+      "fundName": "Tiger Global Management"
+    },
+    {
+      "cik": "0001061165",
+      "error": "Expecting value: line 1 column 1 (char 0)",
+      "fundName": "Lone Pine Capital"
+    },
+    {
+      "cik": "0001747057",
+      "error": "Expecting value: line 1 column 1 (char 0)",
+      "fundName": "D1 Capital Partners"
+    },
+    {
+      "cik": "0001536411",
+      "error": "Expecting value: line 1 column 1 (char 0)",
+      "fundName": "Duquesne Family Office"
+    },
+    {
+      "cik": "0001029160",
+      "error": "Expecting value: line 1 column 1 (char 0)",
+      "fundName": "Soros Fund Management"
+    },
+    {
+      "cik": "0001791786",
+      "error": "Expecting value: line 1 column 1 (char 0)",
+      "fundName": "Elliott Investment Management"
+    },
+    {
+      "cik": "0001517137",
+      "error": "Expecting value: line 1 column 1 (char 0)",
+      "fundName": "Starboard Value"
+    },
+    {
+      "cik": "0001050470",
+      "error": "Expecting value: line 1 column 1 (char 0)",
+      "fundName": "Akre Capital Management"
+    },
+    {
+      "cik": "0001034524",
+      "error": "Expecting value: line 1 column 1 (char 0)",
+      "fundName": "Polen Capital Management"
+    },
+    {
+      "cik": "0001314173",
+      "error": "Expecting value: line 1 column 1 (char 0)",
+      "fundName": "Miller Value Partners"
+    }
+  ],
+  "fund_count_configured": 18,
+  "fund_count_processed_latest": 0,
+  "latest_report_dates": [],
+  "notes": [
+    "13F filings are delayed and do not show shorts or full hedge context.",
+    "Raw SEC 13F reports securities by CUSIP; ticker output depends on data/cusip_ticker_map.csv.",
+    "Passive index managers should generally be excluded from FUND_CIKS."
+  ],
+  "source": "SEC EDGAR 13F-HR filings",
+  "ticker_count": 0
+}
