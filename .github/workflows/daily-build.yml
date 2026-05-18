@@ -8,9 +8,6 @@ on:
 permissions:
   contents: write
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 concurrency:
   group: return-matrix
   cancel-in-progress: true
@@ -21,7 +18,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: true
@@ -61,7 +58,7 @@ jobs:
           done
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
@@ -94,8 +91,8 @@ jobs:
       - name: Build return decomposition
         run: |
           python scripts/build_return_decomposition.py --num-shards 16 --max-days 252
-          ls -lah public/data/return_decomposition_summary.json || true
-          ls -lah public/data/return_decomposition_index.json || true
+          ls -lah public/data/return_decomposition_summary.json
+          ls -lah public/data/return_decomposition_index.json
           ls -lah public/data/return_decomposition_shards || true
 
       - name: Build top correlations
@@ -142,98 +139,60 @@ jobs:
 
       - name: Verify outputs
         run: |
-          set -e
+          test -f data/daily_returns.csv
+          test -f data/correlation_matrix.csv
+          test -f data/macro_dimension_scores.csv
+          test -f data/stock_macro_exposures.csv
+          test -f data/stock_balance_sheet_dilution.csv
+          test -f data/stock_screener.csv
+          test -f data/insider_trading_history.json
+          test -f data/smart_money_raw.csv
+          test -f data/smart_money_fund_holdings.csv
+          test -f data/smart_money_unmapped_cusips.csv
 
-          required_files=(
-            data/daily_returns.csv
-            data/correlation_matrix.csv
-            data/macro_dimension_scores.csv
-            data/stock_macro_exposures.csv
-            data/stock_balance_sheet_dilution.csv
-            data/stock_screener.csv
-            data/insider_trading_history.json
+          test -f public/data/clusters.json
+          test -f public/data/top_correlations.json
+          test -f public/data/vols.json
+          test -f public/data/covariance_matrix.csv
+          test -f public/data/expected_returns.json
+          test -f public/data/dividends.json
+          test -f public/data/sectors.json
+          test -f public/data/fundamental_trends.json
+          test -f public/data/macro_dimension_scores.json
+          test -f public/data/stock_macro_exposures.json
+          test -f public/data/stock_balance_sheet_dilution.json
+          test -f public/data/stock_screener.json
+          test -f public/data/stock_screener.csv
+          test -f public/data/insider_trading.json
+          test -f public/data/insider_trading_summary.json
+          test -f public/data/smart_money.json
 
-            public/data/clusters.json
-            public/data/top_correlations.json
-            public/data/vols.json
-            public/data/covariance_matrix.csv
-            public/data/expected_returns.json
-            public/data/dividends.json
-            public/data/sectors.json
-            public/data/fundamental_trends.json
-            public/data/macro_dimension_scores.json
-            public/data/stock_macro_exposures.json
-            public/data/stock_balance_sheet_dilution.json
-            public/data/stock_screener.json
-            public/data/stock_screener.csv
-            public/data/insider_trading.json
-            public/data/insider_trading_summary.json
-
-            public/data/smart_money.json
-            data/smart_money_raw.csv
-            data/smart_money_fund_holdings.csv
-            data/smart_money_unmapped_cusips.csv
-
-            public/data/return_decomposition_summary.json
-            public/data/return_decomposition_index.json
-          )
-
-          missing=0
-
-          echo "Checking required files..."
-          for f in "${required_files[@]}"; do
-            if [ ! -f "$f" ]; then
-              echo "MISSING FILE: $f"
-              missing=1
-            else
-              echo "OK: $f"
-            fi
-          done
-
-          if [ ! -d public/data/return_decomposition_shards ]; then
-            echo "MISSING DIRECTORY: public/data/return_decomposition_shards"
-            missing=1
-          else
-            echo "OK: public/data/return_decomposition_shards"
-          fi
+          test -f public/data/return_decomposition_summary.json
+          test -f public/data/return_decomposition_index.json
+          test -d public/data/return_decomposition_shards
 
           echo "Shard count:"
-          shard_count=$(find public/data/return_decomposition_shards -maxdepth 1 -name 'shard_*.json' | wc -l || echo 0)
-          echo "$shard_count"
-
-          if [ "$shard_count" -lt 1 ]; then
-            echo "MISSING SHARDS: expected at least 1 shard_*.json"
-            missing=1
-          fi
-
-          if [ "$missing" -ne 0 ]; then
-            echo "One or more required outputs are missing."
-            echo "Recent public/data files:"
-            find public/data -maxdepth 2 -type f | sort | tail -100 || true
-            echo "Recent data files:"
-            find data -maxdepth 1 -type f | sort | tail -100 || true
-            exit 1
-          fi
+          find public/data/return_decomposition_shards -maxdepth 1 -name 'shard_*.json' | wc -l
 
       - name: Show file sizes
         run: |
-          ls -lah public/data/return_decomposition_summary.json || true
-          ls -lah public/data/return_decomposition_index.json || true
+          ls -lah public/data/return_decomposition_summary.json
+          ls -lah public/data/return_decomposition_index.json
           ls -lah public/data/stock_balance_sheet_dilution.json || true
           ls -lah public/data/stock_screener.json || true
           ls -lah public/data/stock_screener.csv || true
           ls -lah data/insider_trading_history.json || true
           ls -lah public/data/insider_trading.json || true
           ls -lah public/data/insider_trading_summary.json || true
-          ls -lah public/data/smart_money.json || true
           ls -lah data/smart_money_raw.csv || true
           ls -lah data/smart_money_fund_holdings.csv || true
           ls -lah data/smart_money_unmapped_cusips.csv || true
+          ls -lah public/data/smart_money.json || true
           du -sh public/data/return_decomposition_shards || true
-          find public/data/return_decomposition_shards -maxdepth 1 -name 'shard_*.json' -exec ls -lah {} \; || true
+          find public/data/return_decomposition_shards -maxdepth 1 -name 'shard_*.json' -exec ls -lah {} \;
 
       - name: Upload outputs
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v4
         with:
           name: return-matrix
           path: |
@@ -318,7 +277,7 @@ jobs:
             echo "No changes to commit."
             echo "HAS_CHANGES=false" >> $GITHUB_ENV
           else
-            git commit -m "Auto update return matrix + screener + insider + smart money + convictions"
+            git commit -m "Auto update return matrix + screener + insider trading + smart money + convictions"
             echo "HAS_CHANGES=true" >> $GITHUB_ENV
           fi
 
