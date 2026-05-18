@@ -63,8 +63,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+SCRIPT_DIR = Path(__file__).resolve().parent
+ROOT = SCRIPT_DIR.parent if SCRIPT_DIR.name == "scripts" else SCRIPT_DIR
 
-ROOT = Path(__file__).resolve().parent
 DATA_DIR = ROOT / "data"
 PUBLIC_DATA_DIR = ROOT / "public" / "data"
 
