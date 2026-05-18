@@ -63,9 +63,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+
 SCRIPT_DIR = Path(__file__).resolve().parent
 ROOT = SCRIPT_DIR.parent if SCRIPT_DIR.name == "scripts" else SCRIPT_DIR
-
 DATA_DIR = ROOT / "data"
 PUBLIC_DATA_DIR = ROOT / "public" / "data"
 
@@ -136,10 +136,12 @@ class Holding:
 
 
 def sec_get(url: str, *, expect_json: bool = False) -> Any:
+    # Do NOT manually request gzip here. urllib does not automatically decompress
+    # compressed SEC responses, which can cause json.loads to fail with:
+    # "Expecting value: line 1 column 1 (char 0)".
     headers = {
         "User-Agent": SEC_USER_AGENT,
-        "Accept-Encoding": "gzip, deflate",
-        "Host": "www.sec.gov" if "www.sec.gov" in url else "data.sec.gov",
+        "Accept": "application/json,text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     }
     req = urllib.request.Request(url, headers=headers)
 
@@ -147,17 +149,30 @@ def sec_get(url: str, *, expect_json: bool = False) -> Any:
         try:
             with urllib.request.urlopen(req, timeout=30) as resp:
                 raw = resp.read()
-                text = raw.decode("utf-8", errors="replace")
+                text = raw.decode("utf-8", errors="replace").strip()
                 time.sleep(REQUEST_SLEEP_SECONDS)
-                return json.loads(text) if expect_json else text
+
+                if expect_json:
+                    if not text:
+                        raise ValueError(f"Empty response from SEC: {url}")
+
+                    # SEC may sometimes return an HTML rate-limit/error page.
+                    if text.startswith("<"):
+                        preview = text[:300].replace("\n", " ")
+                        raise ValueError(f"Expected JSON but received HTML from SEC: {preview}")
+
+                    return json.loads(text)
+
+                return text
+
         except urllib.error.HTTPError as e:
             if e.code in {429, 500, 502, 503, 504} and attempt < 3:
-                time.sleep(1.5 * (attempt + 1))
+                time.sleep(2.0 * (attempt + 1))
                 continue
             raise
-        except urllib.error.URLError:
+        except (urllib.error.URLError, ValueError, json.JSONDecodeError):
             if attempt < 3:
-                time.sleep(1.5 * (attempt + 1))
+                time.sleep(2.0 * (attempt + 1))
                 continue
             raise
 
