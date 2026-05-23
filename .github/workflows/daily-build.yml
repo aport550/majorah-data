@@ -47,6 +47,7 @@ jobs:
             scripts/build_fundamental_trends.py \
             scripts/build_stock_balance_sheet_dilution.py \
             scripts/build_stock_screener.py \
+            scripts/build_ranking_model_buys.py \
             scripts/build_insider_trading.py \
             scripts/build_smart_money.py \
             scripts/update_convictions.py
@@ -125,6 +126,9 @@ jobs:
           fi
           python scripts/build_smart_money.py
 
+      - name: Build ranking model paper buys
+        run: python scripts/build_ranking_model_buys.py
+
       - name: Update convictions (Supabase)
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -166,6 +170,7 @@ jobs:
           test -f public/data/insider_trading.json
           test -f public/data/insider_trading_summary.json
           test -f public/data/smart_money.json
+          test -f public/data/ranking_model_buys.json
 
           test -f public/data/return_decomposition_summary.json
           test -f public/data/return_decomposition_index.json
@@ -188,6 +193,7 @@ jobs:
           ls -lah data/smart_money_fund_holdings.csv || true
           ls -lah data/smart_money_unmapped_cusips.csv || true
           ls -lah public/data/smart_money.json || true
+          ls -lah public/data/ranking_model_buys.json || true
           du -sh public/data/return_decomposition_shards || true
           find public/data/return_decomposition_shards -maxdepth 1 -name 'shard_*.json' -exec ls -lah {} \;
 
@@ -222,6 +228,7 @@ jobs:
             public/data/insider_trading.json
             public/data/insider_trading_summary.json
             public/data/smart_money.json
+            public/data/ranking_model_buys.json
             public/data/return_decomposition_summary.json
             public/data/return_decomposition_index.json
             public/data/return_decomposition_shards
@@ -264,6 +271,7 @@ jobs:
             public/data/insider_trading.json \
             public/data/insider_trading_summary.json \
             public/data/smart_money.json \
+            public/data/ranking_model_buys.json \
             public/data/return_decomposition_summary.json \
             public/data/return_decomposition_index.json \
             public/data/return_decomposition_shards
@@ -277,7 +285,7 @@ jobs:
             echo "No changes to commit."
             echo "HAS_CHANGES=false" >> $GITHUB_ENV
           else
-            git commit -m "Auto update return matrix + screener + insider trading + smart money + convictions"
+            git commit -m "Auto update return matrix + screener + insider trading + smart money + ranking buys + convictions"
             echo "HAS_CHANGES=true" >> $GITHUB_ENV
           fi
 
