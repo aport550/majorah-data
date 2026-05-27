@@ -1,14 +1,14 @@
 {
-  "generated_at": "2026-05-27T10:54:22+00:00",
+  "generated_at": "2026-05-27T22:56:34+00:00",
   "latest_transaction_date": "2026-06-01",
-  "record_count": 3551,
-  "new_records_seen_this_run": 87,
-  "buy_count": 1254,
-  "sale_count": 2297,
-  "informative_count": 567,
+  "record_count": 3811,
+  "new_records_seen_this_run": 260,
+  "buy_count": 1314,
+  "sale_count": 2497,
+  "informative_count": 598,
   "value_by_side": {
-    "Buy": 13992593884,
-    "Sale": 19622069165
+    "Buy": 14223372120,
+    "Sale": 20277136644
   },
   "top_informative_by_value": [
     {
@@ -130,6 +130,46 @@
       "source": "finviz",
       "source_url": "https://finviz.com/insidertrading?tc=1",
       "captured_at": "2026-05-20T10:28:57+00:00"
+    },
+    {
+      "id": "0b51ce088f2de1580d79601a",
+      "ticker": "LILAK",
+      "owner": "MALONE JOHN C",
+      "relationship": "Director Emeritus",
+      "transaction_date": "2026-05-22",
+      "transaction": "Buy",
+      "transaction_side": "Buy",
+      "cost": 8.63,
+      "shares": 12406463,
+      "value": 107067776,
+      "shares_total": 21173018,
+      "sec_form_4_datetime": "2026-05-27T16:33:00+00:00",
+      "sec_form_4_url": "http://www.sec.gov/Archives/edgar/data/937797/000171218426000089/xslF345X06/wk-form4_1779914028.xml",
+      "informative": true,
+      "informative_reason": "fallback_large_open_market_buy",
+      "source": "finviz",
+      "source_url": "https://finviz.com/insidertrading?tc=1",
+      "captured_at": "2026-05-27T22:56:32+00:00"
+    },
+    {
+      "id": "75f8e8c73dd96e672fa545c4",
+      "ticker": "LILA",
+      "owner": "MALONE JOHN C",
+      "relationship": "Director Emeritus",
+      "transaction_date": "2026-05-22",
+      "transaction": "Buy",
+      "transaction_side": "Buy",
+      "cost": 8.63,
+      "shares": 12406463,
+      "value": 107067776,
+      "shares_total": 21173018,
+      "sec_form_4_datetime": "2026-05-27T16:33:00+00:00",
+      "sec_form_4_url": "http://www.sec.gov/Archives/edgar/data/937797/000171218426000089/xslF345X06/wk-form4_1779914028.xml",
+      "informative": true,
+      "informative_reason": "fallback_large_open_market_buy",
+      "source": "finviz",
+      "source_url": "https://finviz.com/insidertrading?tc=1",
+      "captured_at": "2026-05-27T22:56:32+00:00"
     },
     {
       "id": "0586bded49d818ca4371f36f",
@@ -470,46 +510,6 @@
       "source": "finviz",
       "source_url": "https://finviz.com/insidertrading?tc=1",
       "captured_at": "2026-05-15T09:46:26+00:00"
-    },
-    {
-      "id": "167b2337b9cac794b61ef106",
-      "ticker": "ALKT",
-      "owner": "GENERAL ATLANTIC GENPAR (BERMU",
-      "relationship": "Director",
-      "transaction_date": "2026-05-06",
-      "transaction": "Buy",
-      "transaction_side": "Buy",
-      "cost": 16.63,
-      "shares": 844772,
-      "value": 14048558,
-      "shares_total": 17445994,
-      "sec_form_4_datetime": "2026-05-06T21:10:00+00:00",
-      "sec_form_4_url": "http://www.sec.gov/Archives/edgar/data/1356474/000095014226001307/xslF345X06/es260776031_4-alkt2.xml",
-      "informative": true,
-      "informative_reason": "fallback_large_open_market_buy",
-      "source": "finviz",
-      "source_url": "https://finviz.com/insidertrading?tc=1",
-      "captured_at": "2026-05-11T01:01:38+00:00"
-    },
-    {
-      "id": "d64a907350eb102d63bd3a79",
-      "ticker": "ALKT",
-      "owner": "GENERAL ATLANTIC, L.P.",
-      "relationship": "Director",
-      "transaction_date": "2026-05-06",
-      "transaction": "Buy",
-      "transaction_side": "Buy",
-      "cost": 16.63,
-      "shares": 844772,
-      "value": 14048558,
-      "shares_total": 17445994,
-      "sec_form_4_datetime": "2026-05-06T21:08:00+00:00",
-      "sec_form_4_url": "http://www.sec.gov/Archives/edgar/data/1017645/000095014226001306/xslF345X06/es260776030_4-alkt1.xml",
-      "informative": true,
-      "informative_reason": "fallback_large_open_market_buy",
-      "source": "finviz",
-      "source_url": "https://finviz.com/insidertrading?tc=1",
-      "captured_at": "2026-05-11T01:01:38+00:00"
     }
   ]
 }
