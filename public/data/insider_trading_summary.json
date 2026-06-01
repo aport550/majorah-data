@@ -1,14 +1,14 @@
 {
-  "generated_at": "2026-06-01T12:26:57+00:00",
+  "generated_at": "2026-06-01T23:29:43+00:00",
   "latest_transaction_date": "2026-06-04",
-  "record_count": 4566,
-  "new_records_seen_this_run": 26,
-  "buy_count": 1456,
-  "sale_count": 3110,
-  "informative_count": 659,
+  "record_count": 4830,
+  "new_records_seen_this_run": 264,
+  "buy_count": 1520,
+  "sale_count": 3310,
+  "informative_count": 676,
   "value_by_side": {
-    "Buy": 14296967512,
-    "Sale": 24236048383
+    "Buy": 14321950423,
+    "Sale": 26295705670
   },
   "top_informative_by_value": [
     {
@@ -372,6 +372,26 @@
       "captured_at": "2026-05-12T09:31:17+00:00"
     },
     {
+      "id": "56a85761a426171fef73bcb8",
+      "ticker": "HOOD",
+      "owner": "Malka Meyer",
+      "relationship": "Director",
+      "transaction_date": "2026-05-28",
+      "transaction": "Buy",
+      "transaction_side": "Buy",
+      "cost": 80.39,
+      "shares": 249000,
+      "value": 20018206,
+      "shares_total": 3493427,
+      "sec_form_4_datetime": "2026-06-01T16:44:00+00:00",
+      "sec_form_4_url": "http://www.sec.gov/Archives/edgar/data/1571355/000110465926068980/xslF345X06/tm2616557-1_4seq1.xml",
+      "informative": true,
+      "informative_reason": "fallback_large_open_market_buy",
+      "source": "finviz",
+      "source_url": "https://finviz.com/insidertrading?tc=1",
+      "captured_at": "2026-06-01T23:29:40+00:00"
+    },
+    {
       "id": "250e535387927a58de5c0003",
       "ticker": "ODTX",
       "owner": "Li Nan (LN)",
@@ -490,26 +510,6 @@
       "source": "finviz",
       "source_url": "https://finviz.com/insidertrading?tc=1",
       "captured_at": "2026-05-11T01:01:38+00:00"
-    },
-    {
-      "id": "154cd6686c38fdaacd639b45",
-      "ticker": "RSG",
-      "owner": "CASCADE INVESTMENT, L.L.C.",
-      "relationship": "10% Owner",
-      "transaction_date": "2026-05-11",
-      "transaction": "Buy",
-      "transaction_side": "Buy",
-      "cost": 197.18,
-      "shares": 78150,
-      "value": 15409617,
-      "shares_total": 109894982,
-      "sec_form_4_datetime": "2026-05-13T20:55:00+00:00",
-      "sec_form_4_url": "http://www.sec.gov/Archives/edgar/data/902012/000110465926060502/xslF345X06/tm2614470-1_4seq1.xml",
-      "informative": true,
-      "informative_reason": "fallback_large_open_market_buy",
-      "source": "finviz",
-      "source_url": "https://finviz.com/insidertrading?tc=1",
-      "captured_at": "2026-05-15T09:46:26+00:00"
     }
   ]
 }
