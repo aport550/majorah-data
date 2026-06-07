@@ -1,11 +1,11 @@
 {
-  "as_of": "2026-06-06",
+  "as_of": "2026-06-07",
   "method": "trailing_12m_dividends_from_history_actions_over_latest_price",
   "lookback_days": 365,
   "price_lookback_days": 15,
   "units": "percent",
-  "ticker_count_universe": 985,
-  "ticker_count_with_yield": 942,
+  "ticker_count_universe": 987,
+  "ticker_count_with_yield": 944,
   "ticker_count_with_price_missing": 43,
   "ticker_count_failed": 0,
   "dividend_yield_pct": {
@@ -631,6 +631,7 @@
     "PATH": 0.0,
     "PAYX": 4.406645,
     "PBR": 2.895775,
+    "PCOR": 0.0,
     "PDD": 0.0,
     "PDYN": 0.0,
     "PEGA": 0.345722,
@@ -671,6 +672,7 @@
     "PYPL": 1.017195,
     "QBTS": 0.0,
     "QCOM": 1.662499,
+    "QNT": 0.0,
     "QQQ": 0.398831,
     "QQQI": 13.788786,
     "QRVO": 0.0,
@@ -1609,6 +1611,7 @@
     "PATH": 0.0,
     "PAYX": 4.43,
     "PBR": 0.514,
+    "PCOR": 0.0,
     "PDD": 0.0,
     "PDYN": 0.0,
     "PEGA": 0.12,
@@ -1652,6 +1655,7 @@
     "QBTS": 0.0,
     "QCOM": 3.59,
     "QMCU": 0.0,
+    "QNT": 0.0,
     "QQQ": 2.812,
     "QQQI": 7.599,
     "QRVO": 0.0,
@@ -2562,6 +2566,7 @@
     "PATH": 11.24,
     "PAYX": 100.529999,
     "PBR": 17.75,
+    "PCOR": 48.57,
     "PDD": 85.07,
     "PDYN": 6.87,
     "PEGA": 34.709999,
@@ -2602,6 +2607,7 @@
     "PYPL": 41.290001,
     "QBTS": 23.85,
     "QCOM": 215.940002,
+    "QNT": 56.259998,
     "QQQ": 705.059998,
     "QQQI": 55.110001,
     "QRVO": 98.279999,
@@ -3368,6 +3374,8 @@
     "AZ",
     "VITL",
     "BLDR",
-    "KRKNF"
+    "KRKNF",
+    "QNT",
+    "PCOR"
   ]
 }
