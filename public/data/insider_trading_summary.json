@@ -1,14 +1,14 @@
 {
-  "generated_at": "2026-06-09T22:48:03+00:00",
+  "generated_at": "2026-06-10T10:52:24+00:00",
   "latest_transaction_date": "2026-06-14",
-  "record_count": 6899,
-  "new_records_seen_this_run": 261,
-  "buy_count": 2004,
-  "sale_count": 4895,
-  "informative_count": 868,
+  "record_count": 6964,
+  "new_records_seen_this_run": 65,
+  "buy_count": 2011,
+  "sale_count": 4953,
+  "informative_count": 872,
   "value_by_side": {
-    "Buy": 28298382860,
-    "Sale": 42591156197
+    "Buy": 28359053489,
+    "Sale": 42735438883
   },
   "top_informative_by_value": [
     {
@@ -452,6 +452,46 @@
       "captured_at": "2026-05-13T09:36:49+00:00"
     },
     {
+      "id": "9f41f086e712424b24e2877b",
+      "ticker": "LFTO",
+      "owner": "GENERAL ATLANTIC GENPAR, L.P.",
+      "relationship": "Director",
+      "transaction_date": "2026-06-05",
+      "transaction": "Buy",
+      "transaction_side": "Buy",
+      "cost": 23.0,
+      "shares": 1304347,
+      "value": 29999981,
+      "shares_total": 25315646,
+      "sec_form_4_datetime": "2026-06-09T20:45:00+00:00",
+      "sec_form_4_url": "http://www.sec.gov/Archives/edgar/data/1017645/000095014226001717/xslF345X06/es260790990_4-lfto2.xml",
+      "informative": true,
+      "informative_reason": "fallback_large_open_market_buy",
+      "source": "finviz",
+      "source_url": "https://finviz.com/insidertrading?tc=1",
+      "captured_at": "2026-06-10T10:52:22+00:00"
+    },
+    {
+      "id": "d94a1bcc00980311b7c2d239",
+      "ticker": "LFTO",
+      "owner": "General Atlantic (LFT), L.P.",
+      "relationship": "Director",
+      "transaction_date": "2026-06-05",
+      "transaction": "Buy",
+      "transaction_side": "Buy",
+      "cost": 23.0,
+      "shares": 1304347,
+      "value": 29999981,
+      "shares_total": 25315646,
+      "sec_form_4_datetime": "2026-06-09T20:43:00+00:00",
+      "sec_form_4_url": "http://www.sec.gov/Archives/edgar/data/1282203/000095014226001716/xslF345X06/es260790988_4-lfto1.xml",
+      "informative": true,
+      "informative_reason": "fallback_large_open_market_buy",
+      "source": "finviz",
+      "source_url": "https://finviz.com/insidertrading?tc=1",
+      "captured_at": "2026-06-10T10:52:22+00:00"
+    },
+    {
       "id": "fcf811fd7229d0b4a423c54e",
       "ticker": "RSG",
       "owner": "CASCADE INVESTMENT, L.L.C.",
@@ -470,46 +510,6 @@
       "source": "finviz",
       "source_url": "https://finviz.com/insidertrading?tc=1",
       "captured_at": "2026-05-19T10:41:10+00:00"
-    },
-    {
-      "id": "13fa16da16ec7f54333b7bf3",
-      "ticker": "ODTX",
-      "owner": "TPG GP A, LLC",
-      "relationship": "Former 10% Owner",
-      "transaction_date": "2026-05-11",
-      "transaction": "Buy",
-      "transaction_side": "Buy",
-      "cost": 18.0,
-      "shares": 1388889,
-      "value": 25000002,
-      "shares_total": 3690146,
-      "sec_form_4_datetime": "2026-05-13T17:10:00+00:00",
-      "sec_form_4_url": "http://www.sec.gov/Archives/edgar/data/1099776/000199937126010652/xslF345X06/odyssey-form4_051326.xml",
-      "informative": true,
-      "informative_reason": "fallback_large_open_market_buy",
-      "source": "finviz",
-      "source_url": "https://finviz.com/insidertrading?tc=1",
-      "captured_at": "2026-05-15T09:46:26+00:00"
-    },
-    {
-      "id": "a788139edbf3443433b85c51",
-      "ticker": "GOLD",
-      "owner": "Tether Global Investments Fund",
-      "relationship": "10% Owner",
-      "transaction_date": "2026-05-05",
-      "transaction": "Buy",
-      "transaction_side": "Buy",
-      "cost": 44.5,
-      "shares": 530338,
-      "value": 23600041,
-      "shares_total": 3370787,
-      "sec_form_4_datetime": "2026-05-07T16:58:00+00:00",
-      "sec_form_4_url": "http://www.sec.gov/Archives/edgar/data/1591588/000119312526212329/xslF345X06/ownership.xml",
-      "informative": true,
-      "informative_reason": "fallback_large_open_market_buy",
-      "source": "finviz",
-      "source_url": "https://finviz.com/insidertrading?tc=1",
-      "captured_at": "2026-05-11T01:01:38+00:00"
     }
   ]
 }
