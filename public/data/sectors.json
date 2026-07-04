@@ -140,7 +140,6 @@
     "BP": "Energy",
     "BPMC": "Unknown",
     "BRK.B": "Financial Services",
-    "BRKR": "Healthcare",
     "BRKS": "Unknown",
     "BSV": "Unknown",
     "BSX": "Healthcare",
@@ -434,7 +433,7 @@
     "IREN": "Financial Services",
     "IRS": "Real Estate",
     "ISRG": "Healthcare",
-    "ISRL": "Financial Services",
+    "ISRL": "Unknown",
     "IT": "Technology",
     "ITA": "Unknown",
     "ITB": "Unknown",
@@ -868,7 +867,6 @@
     "VIST": "Energy",
     "VIXY": "Unknown",
     "VKTX": "Healthcare",
-    "VLO": "Energy",
     "VLTO": "Industrials",
     "VNM": "Unknown",
     "VNOM": "Energy",
@@ -997,5 +995,8 @@
     "ARRY": "Technology",
     "HQ": "Technology"
   },
-  "failed_tickers": []
+  "failed_tickers": [
+    "BRKR",
+    "VLO"
+  ]
 }
