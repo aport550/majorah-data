@@ -1,7 +1,6 @@
 {
   "as_of": "2026-07-11",
   "sector": {
-    "A": "Healthcare",
     "AA": "Basic Materials",
     "AAPL": "Technology",
     "ABAT": "Industrials",
@@ -190,7 +189,6 @@
     "CLPT": "Healthcare",
     "CLS": "Technology",
     "CLSK": "Financial Services",
-    "CMCSA": "Communication Services",
     "CME": "Financial Services",
     "CNBS": "Unknown",
     "CNC": "Healthcare",
@@ -434,7 +432,7 @@
     "IREN": "Financial Services",
     "IRS": "Real Estate",
     "ISRG": "Healthcare",
-    "ISRL": "Financial Services",
+    "ISRL": "Unknown",
     "IT": "Technology",
     "ITA": "Unknown",
     "ITB": "Unknown",
@@ -534,7 +532,6 @@
     "MOH": "Healthcare",
     "MPC": "Energy",
     "MPWR": "Technology",
-    "MRCY": "Industrials",
     "MRK": "Healthcare",
     "MRNA": "Healthcare",
     "MRVL": "Technology",
@@ -563,7 +560,6 @@
     "NINOY": "Consumer Cyclical",
     "NIO": "Consumer Cyclical",
     "NKE": "Consumer Cyclical",
-    "NLR": "Unknown",
     "NLY": "Real Estate",
     "NNDM": "Technology",
     "NNE": "Industrials",
@@ -705,7 +701,6 @@
     "RR": "Industrials",
     "RSKD": "Technology",
     "RTX": "Industrials",
-    "RUN": "Technology",
     "RXRX": "Healthcare",
     "RY": "Financial Services",
     "S": "Technology",
@@ -766,7 +761,6 @@
     "SQQQ": "Unknown",
     "SRFM": "Industrials",
     "SRPT": "Healthcare",
-    "SRRK": "Healthcare",
     "SSYS": "Technology",
     "STCE": "Unknown",
     "STEM": "Utilities",
@@ -1003,5 +997,12 @@
     "BWXT": "Industrials",
     "ESLT": "Industrials"
   },
-  "failed_tickers": []
+  "failed_tickers": [
+    "A",
+    "CMCSA",
+    "MRCY",
+    "NLR",
+    "RUN",
+    "SRRK"
+  ]
 }
