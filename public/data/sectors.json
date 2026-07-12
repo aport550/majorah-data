@@ -1,6 +1,7 @@
 {
-  "as_of": "2026-07-11",
+  "as_of": "2026-07-12",
   "sector": {
+    "A": "Healthcare",
     "AA": "Basic Materials",
     "AAPL": "Technology",
     "ABAT": "Industrials",
@@ -153,7 +154,6 @@
     "BXSL": "Financial Services",
     "BYDD": "Unknown",
     "BZAI": "Technology",
-    "C": "Financial Services",
     "CAE": "Industrials",
     "CAG": "Consumer Defensive",
     "CAH": "Healthcare",
@@ -189,6 +189,7 @@
     "CLPT": "Healthcare",
     "CLS": "Technology",
     "CLSK": "Financial Services",
+    "CMCSA": "Communication Services",
     "CME": "Financial Services",
     "CNBS": "Unknown",
     "CNC": "Healthcare",
@@ -313,7 +314,6 @@
     "FIP": "Industrials",
     "FIS": "Technology",
     "FISV": "Unknown",
-    "FLAU": "Unknown",
     "FLNC": "Utilities",
     "FLO": "Consumer Defensive",
     "FLSA": "Unknown",
@@ -532,6 +532,7 @@
     "MOH": "Healthcare",
     "MPC": "Energy",
     "MPWR": "Technology",
+    "MRCY": "Industrials",
     "MRK": "Healthcare",
     "MRNA": "Healthcare",
     "MRVL": "Technology",
@@ -560,6 +561,7 @@
     "NINOY": "Consumer Cyclical",
     "NIO": "Consumer Cyclical",
     "NKE": "Consumer Cyclical",
+    "NLR": "Unknown",
     "NLY": "Real Estate",
     "NNDM": "Technology",
     "NNE": "Industrials",
@@ -690,7 +692,6 @@
     "RLAY": "Healthcare",
     "RMAX": "Real Estate",
     "RMBS": "Technology",
-    "RMD": "Healthcare",
     "RNA": "Healthcare",
     "ROBO": "Unknown",
     "ROK": "Industrials",
@@ -701,6 +702,7 @@
     "RR": "Industrials",
     "RSKD": "Technology",
     "RTX": "Industrials",
+    "RUN": "Technology",
     "RXRX": "Healthcare",
     "RY": "Financial Services",
     "S": "Technology",
@@ -761,6 +763,7 @@
     "SQQQ": "Unknown",
     "SRFM": "Industrials",
     "SRPT": "Healthcare",
+    "SRRK": "Healthcare",
     "SSYS": "Technology",
     "STCE": "Unknown",
     "STEM": "Utilities",
@@ -814,7 +817,6 @@
     "TSLA": "Consumer Cyclical",
     "TSLL": "Unknown",
     "TSLZ": "Unknown",
-    "TSM": "Technology",
     "TSNDF": "Healthcare",
     "TSYY": "Unknown",
     "TTD": "Communication Services",
@@ -998,11 +1000,9 @@
     "ESLT": "Industrials"
   },
   "failed_tickers": [
-    "A",
-    "CMCSA",
-    "MRCY",
-    "NLR",
-    "RUN",
-    "SRRK"
+    "C",
+    "FLAU",
+    "RMD",
+    "TSM"
   ]
 }
