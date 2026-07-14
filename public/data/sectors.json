@@ -1,5 +1,5 @@
 {
-  "as_of": "2026-07-13",
+  "as_of": "2026-07-14",
   "sector": {
     "A": "Healthcare",
     "AA": "Basic Materials",
@@ -164,7 +164,7 @@
     "CAT": "Industrials",
     "CB": "Financial Services",
     "CC": "Basic Materials",
-    "CCJ": "Energy",
+    "CCJ": "Unknown",
     "CCNE": "Financial Services",
     "CDNS": "Technology",
     "CDXS": "Healthcare",
@@ -434,7 +434,7 @@
     "IREN": "Financial Services",
     "IRS": "Real Estate",
     "ISRG": "Healthcare",
-    "ISRL": "Financial Services",
+    "ISRL": "Unknown",
     "IT": "Technology",
     "ITA": "Unknown",
     "ITB": "Unknown",
@@ -711,7 +711,7 @@
     "S": "Technology",
     "SAN": "Financial Services",
     "SANA": "Healthcare",
-    "SAP": "Technology",
+    "SAP": "Unknown",
     "SATS": "Communication Services",
     "SBLK": "Industrials",
     "SBUX": "Consumer Cyclical",
@@ -748,7 +748,7 @@
     "SNAP": "Communication Services",
     "SNGX": "Healthcare",
     "SNOW": "Technology",
-    "SNPS": "Technology",
+    "SNPS": "Unknown",
     "SNTI": "Healthcare",
     "SNY": "Healthcare",
     "SO": "Utilities",
@@ -863,7 +863,6 @@
     "VERV": "Unknown",
     "VFC": "Consumer Cyclical",
     "VGLT": "Unknown",
-    "VIG": "Unknown",
     "VIOV": "Unknown",
     "VIST": "Energy",
     "VIXY": "Unknown",
@@ -939,7 +938,7 @@
     "ZLAB": "Healthcare",
     "ZS": "Technology",
     "ZSPC": "Technology",
-    "ZTS": "Healthcare",
+    "ZTS": "Unknown",
     "RYN": "Real Estate",
     "WY": "Real Estate",
     "LPX": "Industrials",
@@ -1001,7 +1000,10 @@
     "HQ": "Technology",
     "LEU": "Energy",
     "BWXT": "Industrials",
-    "ESLT": "Industrials"
+    "ESLT": "Industrials",
+    "LAC": "Basic Materials"
   },
-  "failed_tickers": []
+  "failed_tickers": [
+    "VIG"
+  ]
 }
