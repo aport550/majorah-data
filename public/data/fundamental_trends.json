@@ -1,5 +1,5 @@
 {
-  "as_of": "2026-07-15",
+  "as_of": "2026-07-16",
   "source": "yfinance",
   "revenue_weights": {
     "r01": 0.25,
@@ -16199,15 +16199,48 @@
     },
     "ISRL": {
       "ticker": "ISRL",
-      "revenue": null,
-      "operatingMargin": null,
-      "grossMargin": null,
+      "revenue": {
+        "valid": true,
+        "R0": 0.0,
+        "R1": 0.0,
+        "R2": 0.0,
+        "R3": 0.0,
+        "r01": null,
+        "r12": null,
+        "r03": null,
+        "rawScore": null,
+        "latestDate": "2026-03-31",
+        "latestPeriod": "Q1",
+        "latestYear": "2026"
+      },
+      "operatingMargin": {
+        "valid": true,
+        "O0": null,
+        "O1": null,
+        "O2": null,
+        "O3": null,
+        "o01": null,
+        "o12": null,
+        "o03": null,
+        "rawScore": null
+      },
+      "grossMargin": {
+        "valid": true,
+        "G0": null,
+        "G1": null,
+        "G2": null,
+        "G3": null,
+        "g01": null,
+        "g12": null,
+        "g03": null,
+        "rawScore": null
+      },
       "tamScore": null,
       "moatScore": null,
       "operatingMarginTrendScore": null,
       "grossMarginTrendScore": null,
-      "moatSource": null,
-      "error": "quarterly_income_stmt empty"
+      "moatSource": "grossMargin",
+      "error": null
     },
     "IT": {
       "ticker": "IT",
