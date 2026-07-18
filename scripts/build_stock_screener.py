@@ -462,6 +462,24 @@ def build_row(ticker: str) -> dict:
 
     eps = price_to_usd(eps_raw, quote_currency)
 
+    pretax_income_raw = latest_statement_value(
+        fin,
+        [
+            "Pretax Income",
+            "Income Before Tax",
+            "Earnings Before Tax",
+        ],
+    )
+
+    tax_provision_raw = latest_statement_value(
+        fin,
+        [
+            "Tax Provision",
+            "Income Tax Expense",
+            "Provision For Income Taxes",
+        ],
+    )
+
     # -------------------------
     # Balance sheet
     # -------------------------
@@ -624,6 +642,29 @@ def build_row(ticker: str) -> dict:
     peg = safe_float(info.get("pegRatio"))
     forward_pe = safe_float(info.get("forwardPE"))
 
+    ps = safe_div(market_cap, revenue)
+    if ps is None:
+        ps = safe_float(
+            get_first(
+                info,
+                [
+                    "priceToSalesTrailing12Months",
+                    "priceToSales",
+                ],
+            )
+        )
+
+    effective_tax_rate = safe_float(info.get("effectiveTaxRate"))
+    effective_tax_rate = normalize_decimal_percent(
+        effective_tax_rate,
+        divide_if_over=1.0,
+    )
+
+    if effective_tax_rate is None:
+        calculated_tax_rate = safe_div(tax_provision_raw, pretax_income_raw)
+        if calculated_tax_rate is not None and calculated_tax_rate >= 0:
+            effective_tax_rate = calculated_tax_rate
+
     pb = safe_div(market_cap, equity)
     if pb is None:
         pb = safe_float(info.get("priceToBook"))
@@ -708,7 +749,9 @@ def build_row(ticker: str) -> dict:
         "capex": capex,
         "peg": peg,
         "pb": pb,
+        "ps": ps,
         "forwardPE": forward_pe,
+        "effectiveTaxRate": effective_tax_rate,
         "buybackYield": buyback_yield,
         "dividendYield": dividend_yield,
         "payoutRatio": payout_ratio,
@@ -810,7 +853,9 @@ def main():
         "peg",
         "pb",
         "ptbv",
+        "ps",
         "forwardPE",
+        "effectiveTaxRate",
         "institutionalOwnership",
         "growthRate",
         "growthRateSource",
@@ -881,7 +926,9 @@ def main():
             "peg": "ratio",
             "pb": "ratio",
             "ptbv": "ratio",
+            "ps": "ratio",
             "forwardPE": "ratio",
+            "effectiveTaxRate": "decimal",
             "institutionalOwnership": "decimal",
             "growthRate": "decimal",
             "buybackYield": "decimal",
