@@ -40,6 +40,7 @@ jobs:
           for f in \
             scripts/build_return_matrix.py \
             scripts/build_macro_dimensions.py \
+            scripts/build_market_scenario_dimensions.py \
             scripts/build_stock_macro_exposures.py \
             scripts/build_clusters.py \
             scripts/build_return_decomposition.py \
@@ -81,6 +82,9 @@ jobs:
 
       - name: Build macro dimensions
         run: python scripts/build_macro_dimensions.py
+
+      - name: Build market scenario dimensions
+        run: python scripts/build_market_scenario_dimensions.py
 
       - name: Build stock macro exposures
         run: python scripts/build_stock_macro_exposures.py
@@ -148,6 +152,11 @@ jobs:
           test -f data/daily_returns.csv
           test -f data/correlation_matrix.csv
           test -f data/macro_dimension_scores.csv
+          test -f data/scenario_anchor_prices.csv
+          test -f data/scenario_anchor_returns.csv
+          test -f data/scenario_anchor_zscores.csv
+          test -f data/market_scenario_daily_scores.csv
+          test -f data/universe_scenario_exposures.csv
           test -f data/stock_macro_exposures.csv
           test -f data/stock_balance_sheet_dilution.csv
           test -f data/stock_screener.csv
@@ -165,6 +174,8 @@ jobs:
           test -f public/data/sectors.json
           test -f public/data/fundamental_trends.json
           test -f public/data/macro_dimension_scores.json
+          test -f public/data/market_scenario_daily_scores.json
+          test -f public/data/universe_scenario_exposures.json
           test -f public/data/stock_macro_exposures.json
           test -f public/data/stock_balance_sheet_dilution.json
           test -f public/data/stock_screener.json
@@ -186,6 +197,10 @@ jobs:
           ls -lah public/data/return_decomposition_summary.json
           ls -lah public/data/return_decomposition_index.json
           ls -lah public/data/stock_balance_sheet_dilution.json || true
+          ls -lah data/market_scenario_daily_scores.csv || true
+          ls -lah data/universe_scenario_exposures.csv || true
+          ls -lah public/data/market_scenario_daily_scores.json || true
+          ls -lah public/data/universe_scenario_exposures.json || true
           ls -lah public/data/stock_screener.json || true
           ls -lah public/data/stock_screener.csv || true
           ls -lah data/insider_trading_history.json || true
@@ -207,6 +222,11 @@ jobs:
             data/daily_returns.csv
             data/correlation_matrix.csv
             data/macro_dimension_scores.csv
+            data/scenario_anchor_prices.csv
+            data/scenario_anchor_returns.csv
+            data/scenario_anchor_zscores.csv
+            data/market_scenario_daily_scores.csv
+            data/universe_scenario_exposures.csv
             data/stock_macro_exposures.csv
             data/stock_balance_sheet_dilution.csv
             data/stock_screener.csv
@@ -223,6 +243,8 @@ jobs:
             public/data/sectors.json
             public/data/fundamental_trends.json
             public/data/macro_dimension_scores.json
+            public/data/market_scenario_daily_scores.json
+            public/data/universe_scenario_exposures.json
             public/data/stock_macro_exposures.json
             public/data/stock_balance_sheet_dilution.json
             public/data/stock_screener.json
@@ -250,6 +272,11 @@ jobs:
             data/daily_returns.csv \
             data/correlation_matrix.csv \
             data/macro_dimension_scores.csv \
+            data/scenario_anchor_prices.csv \
+            data/scenario_anchor_returns.csv \
+            data/scenario_anchor_zscores.csv \
+            data/market_scenario_daily_scores.csv \
+            data/universe_scenario_exposures.csv \
             data/stock_macro_exposures.csv \
             data/stock_balance_sheet_dilution.csv \
             data/stock_screener.csv \
@@ -266,6 +293,8 @@ jobs:
             public/data/covariance_matrix.csv \
             public/data/expected_returns.json \
             public/data/macro_dimension_scores.json \
+            public/data/market_scenario_daily_scores.json \
+            public/data/universe_scenario_exposures.json \
             public/data/stock_macro_exposures.json \
             public/data/stock_balance_sheet_dilution.json \
             public/data/stock_screener.json \
