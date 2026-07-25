@@ -14,6 +14,7 @@ PAUSE_SECS = 1.0
 BENCHMARK_TICKER = "SPY"
 RSI_PERIOD = 14
 BETA_LOOKBACK_PERIOD = "1y"
+THREE_YEAR_LOOKBACK_PERIOD = "3y"
 
 FX_CACHE = {}
 HISTORY_CACHE = {}
@@ -333,6 +334,41 @@ def latest_statement_value(df, possible_rows):
     return None
 
 
+def latest_two_statement_values(df, possible_rows):
+    if df is None or df.empty:
+        return None, None
+
+    for row_name in possible_rows:
+        if row_name in df.index:
+            series = df.loc[row_name].dropna()
+            values = [safe_float(value) for value in series.tolist()]
+            values = [value for value in values if value is not None]
+
+            if len(values) >= 2:
+                return values[0], values[1]
+
+    return None, None
+
+
+def analyst_estimate_value(df, periods, possible_columns):
+    if df is None or df.empty:
+        return None
+
+    for period in periods:
+        if period not in df.index:
+            continue
+
+        row = df.loc[period]
+
+        for column in possible_columns:
+            if column in row.index:
+                value = safe_float(row[column])
+                if value is not None:
+                    return value
+
+    return None
+
+
 def build_row(ticker: str) -> dict:
     yahoo_ticker = normalize_for_yahoo(ticker)
     yf_ticker = yf.Ticker(yahoo_ticker)
@@ -358,6 +394,11 @@ def build_row(ticker: str) -> dict:
     except Exception:
         cf = pd.DataFrame()
 
+    try:
+        revenue_estimate = yf_ticker.revenue_estimate
+    except Exception:
+        revenue_estimate = pd.DataFrame()
+
     name = get_first(info, ["longName", "shortName", "displayName"])
 
     quote_currency = normalize_currency(
@@ -376,6 +417,10 @@ def build_row(ticker: str) -> dict:
     # -------------------------
     close_history = get_close_history(yahoo_ticker, period=BETA_LOOKBACK_PERIOD)
     benchmark_close_history = get_close_history(BENCHMARK_TICKER, period=BETA_LOOKBACK_PERIOD)
+    three_year_close_history = get_close_history(
+        yahoo_ticker,
+        period=THREE_YEAR_LOOKBACK_PERIOD,
+    )
 
     rsi14 = compute_rsi(close_history, period=RSI_PERIOD)
     beta = compute_beta(close_history, benchmark_close_history)
@@ -414,6 +459,28 @@ def build_row(ticker: str) -> dict:
     elif price is not None and fifty_two_week_low not in [None, 0]:
         pct_above_52_week_low = safe_float(
             (price - fifty_two_week_low) / fifty_two_week_low
+        )
+
+    three_year_low_raw = None
+    three_year_high_raw = None
+
+    if three_year_close_history is not None and not three_year_close_history.empty:
+        three_year_low_raw = safe_float(three_year_close_history.min())
+        three_year_high_raw = safe_float(three_year_close_history.max())
+
+    three_year_low = price_to_usd(three_year_low_raw, quote_currency)
+    three_year_high = price_to_usd(three_year_high_raw, quote_currency)
+
+    pct_above_3_year_low = None
+    if price_raw is not None and three_year_low_raw not in [None, 0]:
+        pct_above_3_year_low = safe_float(
+            (price_raw - three_year_low_raw) / three_year_low_raw
+        )
+
+    pct_below_3_year_high = None
+    if price_raw is not None and three_year_high_raw not in [None, 0]:
+        pct_below_3_year_high = safe_float(
+            (three_year_high_raw - price_raw) / three_year_high_raw
         )
 
     market_cap_raw = safe_float(info.get("marketCap"))
@@ -461,6 +528,18 @@ def build_row(ticker: str) -> dict:
     )
 
     eps = price_to_usd(eps_raw, quote_currency)
+
+    pe = None
+    if (
+        price_raw is not None
+        and price_raw > 0
+        and eps_raw is not None
+        and eps_raw > 0
+    ):
+        pe = safe_div(price_raw, eps_raw)
+
+    if pe is None:
+        pe = safe_float(get_first(info, ["trailingPE", "trailingPe"]))
 
     pretax_income_raw = latest_statement_value(
         fin,
@@ -654,6 +733,29 @@ def build_row(ticker: str) -> dict:
             )
         )
 
+    forward_revenue_raw = analyst_estimate_value(
+        revenue_estimate,
+        ["+1y", "0y"],
+        ["avg", "average", "avgEstimate"],
+    )
+    forward_revenue = money_to_usd(
+        forward_revenue_raw,
+        financial_currency,
+    )
+
+    forward_ps = safe_div(market_cap, forward_revenue)
+    if forward_ps is None:
+        forward_ps = safe_float(
+            get_first(
+                info,
+                [
+                    "forwardPriceToSales",
+                    "forwardPS",
+                    "priceToSalesForward",
+                ],
+            )
+        )
+
     effective_tax_rate = safe_float(info.get("effectiveTaxRate"))
     effective_tax_rate = normalize_decimal_percent(
         effective_tax_rate,
@@ -711,6 +813,29 @@ def build_row(ticker: str) -> dict:
     elif info.get("earningsQuarterlyGrowth") is not None:
         growth_rate_source = "earningsQuarterlyGrowth"
 
+    latest_share_count, prior_share_count = latest_two_statement_values(
+        fin,
+        [
+            "Diluted Average Shares",
+            "Basic Average Shares",
+        ],
+    )
+
+    if latest_share_count is None or prior_share_count is None:
+        latest_share_count, prior_share_count = latest_two_statement_values(
+            bs,
+            [
+                "Ordinary Shares Number",
+                "Share Issued",
+            ],
+        )
+
+    net_share_change = None
+    if prior_share_count not in [None, 0] and latest_share_count is not None:
+        net_share_change = safe_float(
+            (latest_share_count - prior_share_count) / prior_share_count
+        )
+
     if enterprise_value is None and market_cap is not None:
         enterprise_value = safe_float(market_cap + (debt or 0) - (cash or 0))
 
@@ -725,6 +850,10 @@ def build_row(ticker: str) -> dict:
         "betaBenchmark": BENCHMARK_TICKER,
         "fiftyTwoWeekLow": fifty_two_week_low,
         "pctAbove52WeekLow": pct_above_52_week_low,
+        "threeYearLow": three_year_low,
+        "threeYearHigh": three_year_high,
+        "pctAbove3YearLow": pct_above_3_year_low,
+        "pctBelow3YearHigh": pct_below_3_year_high,
 
         # Ownership / growth / book value fields
         "institutionalOwnership": institutional_ownership,
@@ -742,15 +871,19 @@ def build_row(ticker: str) -> dict:
         "cash": cash,
         "debt": debt,
         "sharesOutstanding": shares_outstanding,
+        "netShareChange": net_share_change,
         "equity": equity,
         "workingCapital": working_capital,
         "ocf": ocf,
         "fcf": fcf,
         "capex": capex,
         "peg": peg,
+        "pe": pe,
         "pb": pb,
         "ps": ps,
+        "forwardPS": forward_ps,
         "forwardPE": forward_pe,
+        "forwardRevenue": forward_revenue,
         "effectiveTaxRate": effective_tax_rate,
         "buybackYield": buyback_yield,
         "dividendYield": dividend_yield,
@@ -769,6 +902,8 @@ def build_row(ticker: str) -> dict:
         "financialFxToUsd": financial_fx_to_usd,
         "priceRaw": price_raw,
         "fiftyTwoWeekLowRaw": fifty_two_week_low_raw,
+        "threeYearLowRaw": three_year_low_raw,
+        "threeYearHighRaw": three_year_high_raw,
         "marketCapRaw": market_cap_raw,
         "revenueRaw": revenue_raw,
 
@@ -836,6 +971,10 @@ def main():
         "betaBenchmark",
         "fiftyTwoWeekLow",
         "pctAbove52WeekLow",
+        "threeYearLow",
+        "threeYearHigh",
+        "pctAbove3YearLow",
+        "pctBelow3YearHigh",
         "marketCap",
         "enterpriseValue",
         "revenue",
@@ -844,6 +983,7 @@ def main():
         "cash",
         "debt",
         "sharesOutstanding",
+        "netShareChange",
         "equity",
         "tangibleBookValue",
         "workingCapital",
@@ -851,10 +991,13 @@ def main():
         "fcf",
         "capex",
         "peg",
+        "pe",
         "pb",
         "ptbv",
         "ps",
+        "forwardPS",
         "forwardPE",
+        "forwardRevenue",
         "effectiveTaxRate",
         "institutionalOwnership",
         "growthRate",
@@ -874,6 +1017,8 @@ def main():
         "financialFxToUsd",
         "priceRaw",
         "fiftyTwoWeekLowRaw",
+        "threeYearLowRaw",
+        "threeYearHighRaw",
         "marketCapRaw",
         "revenueRaw",
         "source",
@@ -909,6 +1054,10 @@ def main():
             "beta": f"vs_{BENCHMARK_TICKER}",
             "fiftyTwoWeekLow": "usd",
             "pctAbove52WeekLow": "decimal",
+            "threeYearLow": "usd",
+            "threeYearHigh": "usd",
+            "pctAbove3YearLow": "decimal",
+            "pctBelow3YearHigh": "decimal",
             "marketCap": "usd",
             "enterpriseValue": "usd",
             "revenue": "usd",
@@ -917,6 +1066,7 @@ def main():
             "cash": "usd",
             "debt": "usd",
             "sharesOutstanding": "shares",
+            "netShareChange": "decimal",
             "equity": "usd",
             "tangibleBookValue": "usd",
             "workingCapital": "usd",
@@ -924,10 +1074,13 @@ def main():
             "fcf": "usd",
             "capex": "usd",
             "peg": "ratio",
+            "pe": "ratio",
             "pb": "ratio",
             "ptbv": "ratio",
             "ps": "ratio",
+            "forwardPS": "ratio",
             "forwardPE": "ratio",
+            "forwardRevenue": "usd",
             "effectiveTaxRate": "decimal",
             "institutionalOwnership": "decimal",
             "growthRate": "decimal",
