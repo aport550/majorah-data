@@ -4,12 +4,11 @@
   "lookback_days": 365,
   "price_lookback_days": 15,
   "units": "percent",
-  "ticker_count_universe": 1055,
-  "ticker_count_with_yield": 1031,
+  "ticker_count_universe": 1057,
+  "ticker_count_with_yield": 1032,
   "ticker_count_with_price_missing": 24,
-  "ticker_count_failed": 0,
+  "ticker_count_failed": 1,
   "dividend_yield_pct": {
-    "A": 0.637107,
     "AA": 0.771456,
     "AAOI": 0.0,
     "AAPL": 0.342654,
@@ -160,6 +159,7 @@
     "BRKR": 0.335796,
     "BSV": 4.026041,
     "BSX": 0.0,
+    "BSY": 0.755124,
     "BTAI": 0.0,
     "BTDPY": 5.471698,
     "BTDR": 0.0,
@@ -581,6 +581,7 @@
     "MGX": 0.0,
     "MHK": 0.0,
     "MIELY": 0.0,
+    "MKC": 3.410937,
     "MKSI": 0.336785,
     "MMM": 1.687528,
     "MMS": 2.215733,
@@ -1042,7 +1043,6 @@
     "ZTS": 2.688794
   },
   "annual_dividend_per_share": {
-    "A": 1.013,
     "AA": 0.4,
     "AAOI": 0.0,
     "AAPL": 1.06,
@@ -1196,6 +1196,7 @@
     "BRKR": 0.2,
     "BSV": 3.123,
     "BSX": 0.0,
+    "BSY": 0.28,
     "BTAI": 0.0,
     "BTDPY": 0.464,
     "BTDR": 0.0,
@@ -1625,6 +1626,7 @@
     "MGX": 0.0,
     "MHK": 0.0,
     "MIELY": 0.0,
+    "MKC": 1.89,
     "MKSI": 0.94,
     "MMC": 0.0,
     "MMM": 3.02,
@@ -2099,7 +2101,6 @@
     "ZTS": 2.09
   },
   "current_price": {
-    "A": 159.0,
     "AA": 51.849998,
     "AAOI": 124.82,
     "AAPL": 309.350006,
@@ -2250,6 +2251,7 @@
     "BRKR": 59.560001,
     "BSV": 77.57,
     "BSX": 50.369999,
+    "BSY": 37.080002,
     "BTAI": 0.804,
     "BTDPY": 8.48,
     "BTDR": 11.37,
@@ -2485,7 +2487,7 @@
     "GOP": 44.569,
     "GPN": 93.489998,
     "GPRE": 16.25,
-    "GPUS": 0.09,
+    "GPUS": 0.0936,
     "GRBK": 71.919998,
     "GS": 1039.280029,
     "GSAT": 82.360001,
@@ -2671,6 +2673,7 @@
     "MGX": 1.23,
     "MHK": 136.220001,
     "MIELY": 70.629997,
+    "MKC": 55.41,
     "MKSI": 279.109985,
     "MMM": 178.960007,
     "MMS": 58.220001,
@@ -3157,7 +3160,9 @@
     "TMHC",
     "MMC"
   ],
-  "failed_tickers": [],
+  "failed_tickers": [
+    "A"
+  ],
   "zero_dividend_tickers": [
     "ABAT",
     "ABCL",
