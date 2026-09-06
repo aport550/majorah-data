@@ -8,8 +8,13 @@ import pandas as pd
 import yfinance as yf
 
 
-BATCH_SIZE = 75
-PAUSE_SECS = 1.0
+BATCH_SIZE = int(os.getenv("SCREENER_BATCH_SIZE", "25"))
+TICKER_PAUSE_SECS = float(os.getenv("SCREENER_TICKER_PAUSE_SECS", "0.5"))
+BATCH_PAUSE_SECS = float(os.getenv("SCREENER_BATCH_PAUSE_SECS", "10"))
+MAX_RETRIES = int(os.getenv("SCREENER_MAX_RETRIES", "3"))
+RETRY_BASE_SECS = float(os.getenv("SCREENER_RETRY_BASE_SECS", "3"))
+MAX_FALLBACK_FRACTION = float(os.getenv("SCREENER_MAX_FALLBACK_FRACTION", "0.05"))
+MAX_STALE_DAYS = int(os.getenv("SCREENER_MAX_STALE_DAYS", "7"))
 
 BENCHMARK_TICKER = "SPY"
 RSI_PERIOD = 14
@@ -18,6 +23,47 @@ THREE_YEAR_LOOKBACK_PERIOD = "3y"
 
 FX_CACHE = {}
 HISTORY_CACHE = {}
+
+CORE_FIELDS = [
+    "price",
+    "rsi14",
+    "beta",
+    "fiftyTwoWeekLow",
+    "threeYearLow",
+]
+
+QUALITY_FIELDS = [
+    "name",
+    "price",
+    "rsi14",
+    "beta",
+    "fiftyTwoWeekLow",
+    "threeYearLow",
+    "threeYearHigh",
+    "marketCap",
+    "enterpriseValue",
+    "revenue",
+    "eps",
+    "ebitda",
+    "cash",
+    "debt",
+    "sharesOutstanding",
+    "equity",
+    "tangibleBookValue",
+    "ocf",
+    "fcf",
+    "pe",
+    "pb",
+    "ptbv",
+    "ps",
+    "forwardPE",
+    "forwardRevenue",
+    "dividendYield",
+]
+
+
+if os.getenv("YF_DEBUG", "0") == "1":
+    yf.enable_debug_mode()
 
 
 def normalize_for_yahoo(t: str) -> str:
@@ -146,6 +192,77 @@ def clean_record(record):
     return {k: clean_json_value(v) for k, v in record.items()}
 
 
+def row_quality_score(row):
+    if not row:
+        return 0
+    return sum(row.get(field) is not None for field in QUALITY_FIELDS)
+
+
+def row_needs_retry(row, previous=None):
+    if not row or not row.get("name"):
+        return True
+    if all(row.get(field) is None for field in CORE_FIELDS):
+        return True
+
+    # Catch a partial Yahoo response even when price history succeeded. Missing
+    # fields that were also missing previously remain legitimate and do not
+    # trigger retries.
+    previous_score = row_quality_score(previous)
+    current_score = row_quality_score(row)
+    return previous_score >= 10 and current_score < previous_score * 0.60
+
+
+def clear_history_cache_for_ticker(ticker):
+    yahoo_ticker = normalize_for_yahoo(ticker)
+    keys = [key for key in HISTORY_CACHE if key[0] == yahoo_ticker]
+    for key in keys:
+        HISTORY_CACHE.pop(key, None)
+
+
+def load_previous_screener(path):
+    if not os.path.exists(path):
+        return {}, None
+
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            payload = json.load(f)
+        rows = payload.get("data", [])
+        previous = {
+            str(row.get("ticker", "")).strip().upper(): row
+            for row in rows
+            if row.get("ticker")
+        }
+        return previous, payload.get("as_of")
+    except Exception as e:
+        print(f"Could not load previous screener for fallback: {e}", flush=True)
+        return {}, None
+
+
+def previous_row_is_recent(row, previous_as_of):
+    date_text = row.get("dataAsOf") or previous_as_of
+    if not date_text:
+        return False
+
+    try:
+        data_date = dt.date.fromisoformat(str(date_text)[:10])
+    except ValueError:
+        return False
+
+    return (dt.date.today() - data_date).days <= MAX_STALE_DAYS
+
+
+def merge_with_previous(current, previous, previous_as_of):
+    merged = dict(previous)
+    for key, value in current.items():
+        if value is not None:
+            merged[key] = value
+
+    merged["ticker"] = current.get("ticker") or previous.get("ticker")
+    merged["dataStatus"] = "stale_fallback"
+    merged["dataAsOf"] = previous.get("dataAsOf") or previous_as_of
+    return merged
+
+
 def get_close_history(yahoo_ticker, period="1y"):
     key = (yahoo_ticker, period)
 
@@ -160,21 +277,32 @@ def get_close_history(yahoo_ticker, period="1y"):
         )
 
         if hist is None or hist.empty or "Close" not in hist.columns:
-            HISTORY_CACHE[key] = pd.Series(dtype=float)
-            return HISTORY_CACHE[key]
+            print(
+                f"{yahoo_ticker}: empty history response for period={period}",
+                flush=True,
+            )
+            return pd.Series(dtype=float)
 
         close = hist["Close"].dropna()
 
         if close.empty:
-            HISTORY_CACHE[key] = pd.Series(dtype=float)
-            return HISTORY_CACHE[key]
+            print(
+                f"{yahoo_ticker}: history contained no closing prices "
+                f"for period={period}",
+                flush=True,
+            )
+            return pd.Series(dtype=float)
 
         HISTORY_CACHE[key] = close.astype(float)
         return HISTORY_CACHE[key]
 
-    except Exception:
-        HISTORY_CACHE[key] = pd.Series(dtype=float)
-        return HISTORY_CACHE[key]
+    except Exception as e:
+        print(
+            f"{yahoo_ticker}: history fetch failed for period={period}: "
+            f"{type(e).__name__}: {e}",
+            flush=True,
+        )
+        return pd.Series(dtype=float)
 
 
 def latest_close(ticker):
@@ -279,7 +407,10 @@ def get_fx_to_usd(currency):
             rate = 1.0 / alias
 
     rate = safe_float(rate)
-    FX_CACHE[currency] = rate
+    # Do not cache a failed FX lookup for the entire run. A transient Yahoo
+    # error would otherwise blank every later ticker in that currency.
+    if rate is not None:
+        FX_CACHE[currency] = rate
 
     return rate
 
@@ -376,27 +507,31 @@ def build_row(ticker: str) -> dict:
     try:
         info = yf_ticker.get_info()
     except Exception as e:
-        print(f"{ticker}: failed info fetch: {e}")
+        print(f"{ticker}: failed info fetch: {e}", flush=True)
         info = {}
 
     try:
         bs = yf_ticker.balance_sheet
-    except Exception:
+    except Exception as e:
+        print(f"{ticker}: balance-sheet fetch failed: {e}", flush=True)
         bs = pd.DataFrame()
 
     try:
         fin = yf_ticker.financials
-    except Exception:
+    except Exception as e:
+        print(f"{ticker}: financials fetch failed: {e}", flush=True)
         fin = pd.DataFrame()
 
     try:
         cf = yf_ticker.cashflow
-    except Exception:
+    except Exception as e:
+        print(f"{ticker}: cash-flow fetch failed: {e}", flush=True)
         cf = pd.DataFrame()
 
     try:
         revenue_estimate = yf_ticker.revenue_estimate
-    except Exception:
+    except Exception as e:
+        print(f"{ticker}: revenue-estimate fetch failed: {e}", flush=True)
         revenue_estimate = pd.DataFrame()
 
     name = get_first(info, ["longName", "shortName", "displayName"])
@@ -912,6 +1047,46 @@ def build_row(ticker: str) -> dict:
     }
 
 
+def build_row_with_retries(ticker, previous=None):
+    last_row = None
+    last_error = None
+
+    for attempt in range(1, MAX_RETRIES + 1):
+        try:
+            last_row = build_row(ticker)
+            last_error = None
+        except Exception as e:
+            last_error = e
+            print(
+                f"{ticker}: hard failure on attempt {attempt}/{MAX_RETRIES}: "
+                f"{type(e).__name__}: {e}",
+                flush=True,
+            )
+
+        if last_row is not None and not row_needs_retry(last_row, previous):
+            return last_row, attempt - 1, None
+
+        if attempt < MAX_RETRIES:
+            delay = RETRY_BASE_SECS * (2 ** (attempt - 1))
+            print(
+                f"{ticker}: incomplete Yahoo response; retrying in "
+                f"{delay:.1f}s ({attempt}/{MAX_RETRIES})",
+                flush=True,
+            )
+            clear_history_cache_for_ticker(ticker)
+            time.sleep(delay)
+
+    if last_row is None:
+        last_row = {"ticker": ticker, "yahooTicker": normalize_for_yahoo(ticker)}
+
+    reason = (
+        f"{type(last_error).__name__}: {last_error}"
+        if last_error is not None
+        else "Yahoo returned an incomplete row after all retries"
+    )
+    return last_row, MAX_RETRIES - 1, reason
+
+
 def main():
     universe_path = "data/universe.csv"
     universe = pd.read_csv(universe_path)
@@ -941,24 +1116,123 @@ def main():
     print(f"Universe tickers: {len(tickers)}")
     print("First 10 tickers:", tickers[:10])
 
+    json_path = "public/data/stock_screener.json"
+    previous_rows, previous_as_of = load_previous_screener(json_path)
+    previous_unresolved = sum(
+        row_needs_retry(row) for row in previous_rows.values()
+    )
+
     rows = []
     failed = []
+    stale_fallback = []
+    unresolved = []
+    retry_count = 0
+    today = dt.date.today().isoformat()
 
     for i, batch in enumerate(chunk_list(tickers, BATCH_SIZE), start=1):
         print(f"\nBatch {i}: processing {len(batch)} tickers...")
 
         for ticker in batch:
             try:
-                print(f"Fetching {ticker}...")
-                rows.append(build_row(ticker))
-            except Exception as e:
-                print(f"{ticker}: hard failed: {e}")
-                failed.append({"ticker": ticker, "error": str(e)})
+                print(f"Fetching {ticker}...", flush=True)
+                previous = previous_rows.get(ticker)
+                row, retries_used, error = build_row_with_retries(
+                    ticker,
+                    previous,
+                )
+                retry_count += retries_used
 
-        time.sleep(PAUSE_SECS)
+                if row_needs_retry(row, previous):
+                    if (
+                        previous
+                        and not row_needs_retry(previous)
+                        and previous_row_is_recent(previous, previous_as_of)
+                    ):
+                        row = merge_with_previous(row, previous, previous_as_of)
+                        stale_fallback.append(ticker)
+                        print(
+                            f"{ticker}: using previous successful data "
+                            f"from {row.get('dataAsOf')}",
+                            flush=True,
+                        )
+                    else:
+                        row["dataStatus"] = "unresolved"
+                        row["dataAsOf"] = None
+                        unresolved.append(ticker)
+                        failed.append(
+                            {
+                                "ticker": ticker,
+                                "error": error or "Incomplete Yahoo response",
+                            }
+                        )
+                else:
+                    row["dataStatus"] = "fresh"
+                    row["dataAsOf"] = today
+
+                rows.append(row)
+            except Exception as e:
+                print(f"{ticker}: hard failed: {e}", flush=True)
+                failed.append({"ticker": ticker, "error": str(e)})
+                unresolved.append(ticker)
+                rows.append(
+                    {
+                        "ticker": ticker,
+                        "yahooTicker": normalize_for_yahoo(ticker),
+                        "dataStatus": "unresolved",
+                        "dataAsOf": None,
+                    }
+                )
+
+            time.sleep(TICKER_PAUSE_SECS)
+
+        if i * BATCH_SIZE < len(tickers):
+            print(
+                f"Batch {i} complete; pausing {BATCH_PAUSE_SECS:.1f}s...",
+                flush=True,
+            )
+            time.sleep(BATCH_PAUSE_SECS)
 
     if not rows:
         raise RuntimeError("No screener rows built.")
+
+    allowed_unresolved = max(3, previous_unresolved + 3)
+    allowed_fallback = max(10, int(len(tickers) * MAX_FALLBACK_FRACTION))
+
+    print("\nScreener coverage summary", flush=True)
+    print(f"Rows built: {len(rows)}/{len(tickers)}", flush=True)
+    print(f"Retries used: {retry_count}", flush=True)
+    print(
+        f"Previous-data fallbacks: {len(stale_fallback)} "
+        f"(maximum allowed: {allowed_fallback})",
+        flush=True,
+    )
+    print(
+        f"Unresolved rows: {len(unresolved)} "
+        f"(maximum allowed: {allowed_unresolved})",
+        flush=True,
+    )
+    if stale_fallback:
+        print(f"Fallback tickers: {stale_fallback}", flush=True)
+    if unresolved:
+        print(f"Unresolved tickers: {unresolved}", flush=True)
+
+    # Abort before overwriting the last good output if Yahoo broadly failed.
+    if len(stale_fallback) > allowed_fallback:
+        raise RuntimeError(
+            f"Likely Yahoo rate limiting: {len(stale_fallback)} tickers "
+            "required previous-data fallback. Existing outputs were preserved."
+        )
+    if len(unresolved) > allowed_unresolved:
+        raise RuntimeError(
+            f"Screener coverage regressed: {len(unresolved)} unresolved tickers "
+            f"versus {previous_unresolved} in the previous output. "
+            "Existing outputs were preserved."
+        )
+    if len(rows) != len(tickers):
+        raise RuntimeError(
+            f"Screener produced {len(rows)} rows for {len(tickers)} tickers. "
+            "Existing outputs were preserved."
+        )
 
     df = pd.DataFrame(rows)
 
@@ -1023,6 +1297,8 @@ def main():
         "revenueRaw",
         "source",
         "yahooTicker",
+        "dataStatus",
+        "dataAsOf",
     ]
 
     df = df[[c for c in column_order if c in df.columns]]
@@ -1033,8 +1309,6 @@ def main():
 
     csv_path = "data/stock_screener.csv"
     public_csv_path = "public/data/stock_screener.csv"
-    json_path = "public/data/stock_screener.json"
-
     df.to_csv(csv_path, index=False)
     df.to_csv(public_csv_path, index=False)
 
@@ -1048,6 +1322,11 @@ def main():
         "ticker_count": int(len(df)),
         "failed_count": int(len(failed)),
         "failed": failed[:100],
+        "retry_count": int(retry_count),
+        "stale_fallback_count": int(len(stale_fallback)),
+        "stale_fallback_tickers": stale_fallback,
+        "unresolved_count": int(len(unresolved)),
+        "unresolved_tickers": unresolved,
         "units": {
             "price": "usd",
             "rsi14": "0_to_100",
