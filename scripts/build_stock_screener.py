@@ -199,7 +199,7 @@ def row_quality_score(row):
 
 
 def row_needs_retry(row, previous=None):
-    if not row or not row.get("name"):
+    if not row:
         return True
     if all(row.get(field) is None for field in CORE_FIELDS):
         return True
@@ -1141,6 +1141,15 @@ def main():
                     previous,
                 )
                 retry_count += retries_used
+
+                # Yahoo's quote-summary endpoint often has no corporate
+                # fundamentals for ETFs even though their price history is
+                # valid. Keep the prior display name (or the ticker itself)
+                # without treating that expected 404 as a failed price pull.
+                if not row.get("name"):
+                    row["name"] = (
+                        previous.get("name") if previous else None
+                    ) or ticker
 
                 if row_needs_retry(row, previous):
                     if (
