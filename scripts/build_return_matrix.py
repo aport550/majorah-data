@@ -60,6 +60,7 @@ def main():
     PAUSE_SECS = 1.0
 
     all_adjclose = []
+    all_close = []
 
     for b, batch in enumerate(chunk_list(tickers, BATCH_SIZE), start=1):
         yahoo_batch = [yahoo_map[t] for t in batch]
@@ -84,7 +85,9 @@ def main():
             time.sleep(PAUSE_SECS)
             continue
 
-        # Try Adj Close first
+        # Keep both series for two different purposes:
+        # - Adj Close drives total-return calculations.
+        # - Close lets the frontend recover the actual quoted historical price.
         if isinstance(df.columns, pd.MultiIndex):
             if "Adj Close" in df.columns.get_level_values(0):
                 px = df["Adj Close"].copy()
@@ -94,6 +97,11 @@ def main():
                 print(f"Batch {b} missing Adj Close/Close columns.")
                 time.sleep(PAUSE_SECS)
                 continue
+
+            if "Close" in df.columns.get_level_values(0):
+                close_px = df["Close"].copy()
+            else:
+                close_px = px.copy()
         else:
             # Single ticker case
             if "Adj Close" in df.columns:
@@ -105,25 +113,37 @@ def main():
                 time.sleep(PAUSE_SECS)
                 continue
 
+            if "Close" in df.columns:
+                close_px = df["Close"].to_frame()
+            else:
+                close_px = px.copy()
+
         # Convert index to date
         px.index = pd.to_datetime(px.index).date
+        close_px.index = pd.to_datetime(close_px.index).date
 
         # Rename columns back to original tickers where possible
         inverse = {v: k for k, v in yahoo_map.items()}
         px = px.rename(columns=lambda c: inverse.get(str(c).upper(), str(c).upper()))
+        close_px = close_px.rename(
+            columns=lambda c: inverse.get(str(c).upper(), str(c).upper())
+        )
 
         all_adjclose.append(px)
+        all_close.append(close_px)
         time.sleep(PAUSE_SECS)
 
     if not all_adjclose:
         raise RuntimeError("No price data fetched from Yahoo (all batches empty/failed).")
 
     prices = pd.concat(all_adjclose, axis=1)
+    close_prices = pd.concat(all_close, axis=1)
 
     # Keep only tickers in original order, if present
     present = [t for t in tickers if t in prices.columns]
     missing = [t for t in tickers if t not in prices.columns]
     prices = prices[present].sort_index()
+    close_prices = close_prices.reindex(index=prices.index, columns=present)
 
     print(f"\nPrices built. Present: {len(present)}  Missing: {len(missing)}")
     if missing:
@@ -143,6 +163,56 @@ def main():
     public_returns_path = "public/data/daily_returns.csv"
     returns.to_csv(public_returns_path)
     print(f"Saved {public_returns_path} ({os.path.getsize(public_returns_path)} bytes)")
+
+    # Compact metadata used by the frontend to convert the adjusted-price path
+    # back to the actual historical closing price. Adjustment factors are
+    # piecewise constant, so storing only change points is much smaller than a
+    # second full daily price matrix.
+    price_anchors = {}
+    adjustment_factors = {}
+
+    for ticker in present:
+        adjusted = pd.to_numeric(prices[ticker], errors="coerce")
+        raw_close = pd.to_numeric(close_prices[ticker], errors="coerce")
+        valid_anchor = adjusted.dropna()
+
+        if not valid_anchor.empty:
+            anchor_date = valid_anchor.index[-1]
+            price_anchors[ticker] = {
+                "date": anchor_date.isoformat(),
+                "adjusted_close": float(valid_anchor.iloc[-1]),
+            }
+
+        ratio = (adjusted / raw_close).replace([np.inf, -np.inf], np.nan).dropna()
+        changes = []
+        previous_factor = None
+
+        for date, value in ratio.items():
+            factor = round(float(value), 8)
+            if factor <= 0:
+                continue
+            if previous_factor is None or abs(factor - previous_factor) >= 1e-7:
+                changes.append([date.isoformat(), factor])
+                previous_factor = factor
+
+        if changes:
+            adjustment_factors[ticker] = changes
+
+    price_metadata = {
+        "as_of": dt.date.today().isoformat(),
+        "method": "historical_close = reconstructed_adjusted_close / adjustment_factor",
+        "price_anchors": price_anchors,
+        "adjustment_factors": adjustment_factors,
+        "ticker_count": len(price_anchors),
+    }
+
+    price_metadata_path = "public/data/price_metadata.json"
+    with open(price_metadata_path, "w", encoding="utf-8") as f:
+        json.dump(price_metadata, f, separators=(",", ":"))
+    print(
+        f"Saved {price_metadata_path} "
+        f"({os.path.getsize(price_metadata_path)} bytes)"
+    )
 
     # Correlation matrix
     corr = returns.corr()
