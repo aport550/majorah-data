@@ -13,6 +13,7 @@ TICKER_PAUSE_SECS = float(os.getenv("SCREENER_TICKER_PAUSE_SECS", "0.5"))
 BATCH_PAUSE_SECS = float(os.getenv("SCREENER_BATCH_PAUSE_SECS", "10"))
 MAX_RETRIES = int(os.getenv("SCREENER_MAX_RETRIES", "3"))
 RETRY_BASE_SECS = float(os.getenv("SCREENER_RETRY_BASE_SECS", "3"))
+RECOVERY_PAUSE_SECS = float(os.getenv("SCREENER_RECOVERY_PAUSE_SECS", "20"))
 MAX_FALLBACK_FRACTION = float(os.getenv("SCREENER_MAX_FALLBACK_FRACTION", "0.05"))
 MAX_STALE_DAYS = int(os.getenv("SCREENER_MAX_STALE_DAYS", "7"))
 
@@ -23,6 +24,41 @@ THREE_YEAR_LOOKBACK_PERIOD = "3y"
 
 FX_CACHE = {}
 HISTORY_CACHE = {}
+
+# Symbols in the universe are intentionally kept stable for display and for
+# matching prior output.  Yahoo sometimes uses a different current symbol (or
+# a vendor-specific exchange suffix), so translate only at the fetch boundary.
+YAHOO_TICKER_ALIASES = {
+    "AGFY": "RYM",       # Agrify renamed RYTHM, Inc. in September 2025
+    "BYDD": "BYDDY",     # BYD sponsored ADR
+    "LAAC": "LAR",       # Lithium Argentina symbol change in January 2025
+    "PARRO": "PARRO.PA", # Parrot on Euronext Paris
+}
+
+YAHOO_EXCHANGE_SUFFIXES = {
+    "AMS": "AS",
+    "ASX": "AX",
+    "EPA": "PA",
+    "ETR": "DE",
+    "FRA": "F",
+    "LON": "L",
+    "NASDAQ": "",
+    "NYSE": "",
+    "OTC": "",
+    "SWX": "SW",
+    "TLV": "TA",
+    "TSE": "TO",
+    "TSX": "TO",
+    "XPAR": "PA",
+}
+
+# A dot before one of these tokens is an exchange suffix, not a U.S. share
+# class separator.  For example, PARRO.PA must not become PARRO-PA.
+YAHOO_MARKET_SUFFIXES = {
+    "AS", "AX", "BR", "CO", "DE", "F", "HE", "HK", "JO", "KQ", "KS",
+    "L", "LS", "MC", "MI", "NE", "NZ", "OL", "PA", "SA", "SI", "ST",
+    "SW", "TA", "T", "TO", "TW", "TWO", "VI", "WA",
+}
 
 CORE_FIELDS = [
     "price",
@@ -70,6 +106,22 @@ def normalize_for_yahoo(t: str) -> str:
     t = str(t).strip().upper()
     if not t:
         return ""
+
+    alias = YAHOO_TICKER_ALIASES.get(t)
+    if alias:
+        return alias
+
+    if ":" in t:
+        exchange, symbol = t.split(":", 1)
+        symbol = symbol.strip()
+        suffix = YAHOO_EXCHANGE_SUFFIXES.get(exchange.strip())
+        if symbol and suffix is not None:
+            translated = f"{symbol}.{suffix}" if suffix else symbol
+            return YAHOO_TICKER_ALIASES.get(translated, translated)
+
+    if "." in t and t.rsplit(".", 1)[1] in YAHOO_MARKET_SUFFIXES:
+        return t
+
     return t.replace(".", "-")
 
 
@@ -269,40 +321,63 @@ def get_close_history(yahoo_ticker, period="1y"):
     if key in HISTORY_CACHE:
         return HISTORY_CACHE[key]
 
+    errors = []
+
     try:
         hist = yf.Ticker(yahoo_ticker).history(
             period=period,
             interval="1d",
             auto_adjust=True,
         )
-
-        if hist is None or hist.empty or "Close" not in hist.columns:
-            print(
-                f"{yahoo_ticker}: empty history response for period={period}",
-                flush=True,
-            )
-            return pd.Series(dtype=float)
-
-        close = hist["Close"].dropna()
-
-        if close.empty:
-            print(
-                f"{yahoo_ticker}: history contained no closing prices "
-                f"for period={period}",
-                flush=True,
-            )
-            return pd.Series(dtype=float)
-
-        HISTORY_CACHE[key] = close.astype(float)
-        return HISTORY_CACHE[key]
-
     except Exception as e:
+        errors.append(f"Ticker.history {type(e).__name__}: {e}")
+        hist = pd.DataFrame()
+
+    # yfinance's Ticker.history and download paths do not always fail together.
+    # A second path is especially useful during intermittent Yahoo crumb/cookie
+    # failures in long GitHub Actions runs.
+    if hist is None or hist.empty or "Close" not in hist.columns:
+        try:
+            hist = yf.download(
+                yahoo_ticker,
+                period=period,
+                interval="1d",
+                auto_adjust=True,
+                progress=False,
+                threads=False,
+            )
+        except Exception as e:
+            errors.append(f"download {type(e).__name__}: {e}")
+            hist = pd.DataFrame()
+
+    if hist is None or hist.empty or "Close" not in hist.columns:
+        detail = f" ({'; '.join(errors)})" if errors else ""
         print(
-            f"{yahoo_ticker}: history fetch failed for period={period}: "
-            f"{type(e).__name__}: {e}",
+            f"{yahoo_ticker}: empty history response for period={period}{detail}",
             flush=True,
         )
         return pd.Series(dtype=float)
+
+    close = hist["Close"]
+    # Newer yfinance releases return a one-column DataFrame from download()
+    # even for one ticker because the columns are a MultiIndex.
+    if isinstance(close, pd.DataFrame):
+        if close.shape[1] == 0:
+            return pd.Series(dtype=float)
+        close = close.iloc[:, 0]
+
+    close = close.dropna()
+
+    if close.empty:
+        print(
+            f"{yahoo_ticker}: history contained no closing prices "
+            f"for period={period}",
+            flush=True,
+        )
+        return pd.Series(dtype=float)
+
+    HISTORY_CACHE[key] = close.astype(float)
+    return HISTORY_CACHE[key]
 
 
 def latest_close(ticker):
@@ -1126,6 +1201,7 @@ def main():
     failed = []
     stale_fallback = []
     unresolved = []
+    regressed_unresolved = []
     retry_count = 0
     today = dt.date.today().isoformat()
 
@@ -1168,6 +1244,8 @@ def main():
                         row["dataStatus"] = "unresolved"
                         row["dataAsOf"] = None
                         unresolved.append(ticker)
+                        if previous and not row_needs_retry(previous):
+                            regressed_unresolved.append(ticker)
                         failed.append(
                             {
                                 "ticker": ticker,
@@ -1183,6 +1261,9 @@ def main():
                 print(f"{ticker}: hard failed: {e}", flush=True)
                 failed.append({"ticker": ticker, "error": str(e)})
                 unresolved.append(ticker)
+                previous = previous_rows.get(ticker)
+                if previous and not row_needs_retry(previous):
+                    regressed_unresolved.append(ticker)
                 rows.append(
                     {
                         "ticker": ticker,
@@ -1200,6 +1281,43 @@ def main():
                 flush=True,
             )
             time.sleep(BATCH_PAUSE_SECS)
+
+    # Retry only genuine regressions once more after the full universe has had
+    # time to run.  This avoids weakening the coverage gate and avoids spending
+    # extra minutes repeatedly querying symbols that were already unresolved in
+    # the prior output (usually stale or invalid universe entries).
+    regressed_unresolved = list(dict.fromkeys(regressed_unresolved))
+    if regressed_unresolved:
+        print(
+            f"\nRecovery pass: pausing {RECOVERY_PAUSE_SECS:.1f}s before "
+            f"retrying {len(regressed_unresolved)} newly unresolved tickers...",
+            flush=True,
+        )
+        time.sleep(RECOVERY_PAUSE_SECS)
+        row_index = {ticker: index for index, ticker in enumerate(tickers)}
+
+        for ticker in regressed_unresolved:
+            previous = previous_rows.get(ticker)
+            clear_history_cache_for_ticker(ticker)
+            row, retries_used, error = build_row_with_retries(ticker, previous)
+            retry_count += retries_used
+
+            if not row_needs_retry(row, previous):
+                row["name"] = row.get("name") or (
+                    previous.get("name") if previous else None
+                ) or ticker
+                row["dataStatus"] = "fresh"
+                row["dataAsOf"] = today
+                rows[row_index[ticker]] = row
+                unresolved = [item for item in unresolved if item != ticker]
+                failed = [item for item in failed if item.get("ticker") != ticker]
+                print(f"{ticker}: recovered successfully", flush=True)
+            else:
+                print(
+                    f"{ticker}: still unresolved after recovery pass: "
+                    f"{error or 'Incomplete Yahoo response'}",
+                    flush=True,
+                )
 
     if not rows:
         raise RuntimeError("No screener rows built.")
