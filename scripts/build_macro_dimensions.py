@@ -1,3 +1,163 @@
+#!/usr/bin/env python3
+"""Majorah: five daily ETF proxies, four main regimes, 32 subregimes.
+
+Install: python -m pip install pandas numpy yfinance
+Save in your project's scripts/ folder and run from any directory.
+Alternatively pass --root /path/to/project. Python 3.10+.
+
+All inputs are adjusted ETF daily returns. Labels describe daily market
+direction, NOT economic levels or measured changes in inflation/real yields.
+Positive scores: inflation rising, growth/risk-on, dollar strengthening,
+credit improving, real rates rising. Scores preserve the raw signal's sign.
+
+Duration assumptions are fixed approximate model parameters, not historical
+fund durations. Income/carry, CPI accrual, curve shifts, ETF premiums/discounts,
+and changing durations contaminate these proxies. TIP appears in two signals;
+the five dimensions need not be independent. Validate against yield/spread
+data before interpreting these as macroeconomic measurements.
+
+Existing JSON remains a list of daily rows. Liquidity is replaced by dollar,
+credit, and real_rates: update frontend consumers accordingly. Additional
+catalog and metadata JSON files document all 32 IDs and the assumptions.
+Use completed daily labels only for subsequent-return predictive backtests.
+"""
+from __future__ import annotations
+
+import argparse
+from bisect import bisect_right, insort_right
+from datetime import datetime
+from itertools import product
+import json
+from pathlib import Path
+import time
+from zoneinfo import ZoneInfo
+
+import numpy as np
+import pandas as pd
+
+START_DATE = "2020-01-01"
+WARMUP_START = "2019-06-01"
+ROLLING_WINDOW = 60
+MIN_PERIODS = 20
+CLIP_Z = 3.0
+SMOOTH_SPAN = 5
+MAX_ATTEMPTS = 3
+TICKERS = ["SPY", "TIP", "IEF", "UUP", "HYG"]
+DIMENSIONS = ["inflation", "growth", "dollar", "credit", "real_rates"]
+# Illustrative fixed assumptions in YEARS, not claimed current fund data.
+DURATION = {"TIP": 6.5, "IEF": 7.0, "HYG": 3.0}
+FLAT_EPSILON = 1e-12   # numerical equality only, not a noise threshold
+STATES = {
+    "inflation": ("Expectations falling", "Expectations rising"),
+    "growth": ("Contraction / risk-off", "Growth / risk-on"),
+    "dollar": ("Dollar weakening", "Dollar strengthening"),
+    "credit": ("Credit deteriorating", "Credit improving"),
+    "real_rates": ("Real rates falling", "Real rates rising"),
+}
+
+
+def extract_close(df: pd.DataFrame, tickers: list[str]) -> pd.DataFrame:
+    if df is None or df.empty:
+        return pd.DataFrame(columns=tickers, dtype=float)
+    if isinstance(df.columns, pd.MultiIndex):
+        levels = [i for i in range(df.columns.nlevels)
+                  if "Close" in df.columns.get_level_values(i)]
+        if not levels:
+            raise ValueError("Download has no Close field")
+        prices = df.xs("Close", axis=1, level=levels[0]).copy()
+    else:
+        if len(tickers) != 1 or "Close" not in df:
+            raise ValueError("Unexpected download column structure")
+        prices = df["Close"].to_frame(tickers[0])
+    prices.columns = [str(c).upper() for c in prices.columns]
+    prices.index = pd.to_datetime(prices.index).tz_localize(None).normalize()
+    prices = prices[~prices.index.duplicated(keep="last")].sort_index()
+    return prices.reindex(columns=tickers).apply(pd.to_numeric, errors="coerce")
+
+
+def download_prices(start: str, end: str) -> pd.DataFrame:
+    import yfinance as yf
+
+    prices = pd.DataFrame()
+    pending = TICKERS.copy()
+    for attempt in range(MAX_ATTEMPTS):
+        try:
+            downloaded = yf.download(
+                tickers=pending, start=start, end=end, interval="1d",
+                auto_adjust=True, progress=False, group_by="column",
+                threads=2, timeout=30,
+            )
+            part = extract_close(downloaded, pending)
+            prices = prices.combine_first(part)
+        except Exception as exc:
+            print(f"Download attempt {attempt + 1}: {exc}")
+        pending = [t for t in TICKERS
+                   if t not in prices or not prices[t].notna().any()]
+        if not pending:
+            break
+        if attempt < MAX_ATTEMPTS - 1:
+            time.sleep(5 * 2 ** attempt)
+    if pending:
+        raise RuntimeError(f"Missing all price history for {pending}; outputs not replaced")
+    prices = prices.reindex(columns=TICKERS).sort_index()
+    prices = prices.where(np.isfinite(prices) & (prices > 0))
+    # SPY supplies the equity trading calendar; missing anchors remain missing.
+    prices = prices.loc[prices["SPY"].notna()]
+    if prices.empty:
+        raise RuntimeError("No valid SPY trading dates")
+    return prices
+
+
+def daily_signals(returns: pd.DataFrame) -> pd.DataFrame:
+    r = returns
+    signals = pd.DataFrame(index=r.index)
+    # Same-duration comparison: TIP - (D_TIP / D_IEF) * IEF.
+    signals["inflation"] = r["TIP"] - DURATION["TIP"] / DURATION["IEF"] * r["IEF"]
+    signals["growth"] = r["SPY"]
+    signals["dollar"] = r["UUP"]
+    signals["credit"] = r["HYG"] - DURATION["HYG"] / DURATION["IEF"] * r["IEF"]
+    signals["real_rates"] = -r["TIP"]
+    return signals[DIMENSIONS]
+
+
+def expanding_rank(s: pd.Series) -> pd.Series:
+    """Empirical CDF through today, including ties; no future observations."""
+    history, ranks = [], []
+    for x in s:
+        if pd.isna(x):
+            ranks.append(np.nan)
+        else:
+            insort_right(history, float(x))
+            ranks.append(bisect_right(history, float(x)) / len(history))
+    return pd.Series(ranks, index=s.index)
+
+
+def describe(bits: tuple[int, ...]) -> dict:
+    inflation, growth, dollar, credit, real_rates = bits
+    main = {
+        (1, 1): "Inflationary growth", (0, 1): "Disinflationary growth",
+        (1, 0): "Stagflationary", (0, 0): "Deflationary contraction",
+    }[(inflation, growth)]
+    code = "".join(map(str, bits))
+    result = {
+        "regime_id": 1 + int(code, 2), "regime_code": code,
+        "main_regime": main,
+        "regime_label": " | ".join([main, STATES["dollar"][dollar],
+                                      STATES["credit"][credit], STATES["real_rates"][real_rates]]),
+    }
+    result.update({f"{dim}_state": STATES[dim][bit]
+                   for dim, bit in zip(DIMENSIONS, bits)})
+    return result
+
+
+def build_scores(signals: pd.DataFrame) -> pd.DataFrame:
+    out = pd.DataFrame(index=signals.index)
+    states = pd.DataFrame(index=signals.index)
+    scores = pd.DataFrame(index=signals.index)
+    for dim in DIMENSIONS:
+        raw = signals[dim]
+        scale = raw.rolling(ROLLING_WINDOW, min_periods=MIN_PERIODS).std(ddof=0).shift(1)
+        score = (raw / scale.replace(0, np.nan)).clip(-CLIP_Z, CLIP_Z)
         scores[dim] = score
         flat = raw.notna() & raw.abs().le(FLAT_EPSILON)
         direction = np.sign(raw).mask(flat).ffill().where(raw.notna())
@@ -112,4 +272,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
