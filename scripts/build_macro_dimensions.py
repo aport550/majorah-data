@@ -16,8 +16,8 @@ and changing durations contaminate these proxies. TIP appears in two signals;
 the five dimensions need not be independent. Validate against yield/spread
 data before interpreting these as macroeconomic measurements.
 
-Existing JSON remains a list of daily rows. Liquidity is replaced by dollar,
-credit, and real_rates: update frontend consumers accordingly. Additional
+Existing JSON remains a list of daily rows. Legacy liquidity fields are retained
+alongside dollar, credit, and real_rates. Liquidity is NOT a sixth regime bit. Additional
 catalog and metadata JSON files document all 32 IDs and the assumptions.
 Use completed daily labels only for subsequent-return predictive backtests.
 """
@@ -188,6 +188,26 @@ def build_scores(signals: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
+def add_legacy_liquidity(scores: pd.DataFrame, returns: pd.DataFrame) -> pd.DataFrame:
+    """Original liquidity = clipped rolling z(HYG) - clipped rolling z(UUP).
+
+    Unlike the five sign-preserving regime scores, legacy z-scores subtract
+    the rolling mean and include today in their normalization window.
+    Compute before trimming warmup to preserve EMA and percentile history.
+    """
+    anchors = returns[["HYG", "UUP"]]
+    mean = anchors.rolling(ROLLING_WINDOW, min_periods=MIN_PERIODS).mean()
+    std = anchors.rolling(ROLLING_WINDOW, min_periods=MIN_PERIODS).std(ddof=0)
+    z = ((anchors - mean) / std.replace(0, np.nan)).clip(-CLIP_Z, CLIP_Z)
+    liquidity = z["HYG"] - z["UUP"]
+    out = scores.copy()
+    out["liquidity_score"] = liquidity
+    out[f"liquidity_score_ema{SMOOTH_SPAN}"] = liquidity.ewm(
+        span=SMOOTH_SPAN, adjust=False).mean()
+    out["liquidity_pct_rank"] = expanding_rank(liquidity)
+    return out
+
+
 def write_json(path: Path, value) -> None:
     temp = path.with_suffix(path.suffix + ".tmp")
     temp.write_text(json.dumps(value, indent=2, allow_nan=False) + "\n", encoding="utf-8")
@@ -212,7 +232,7 @@ def main() -> None:
     prices = download_prices(args.warmup_start, args.end)
     returns = prices.pct_change(fill_method=None)
     signals = daily_signals(returns)
-    scores = build_scores(signals)
+    scores = add_legacy_liquidity(build_scores(signals), returns)
     mask = (prices.index >= start) & (prices.index < end)
     prices_out, returns_out, scores_out = prices.loc[mask], returns.loc[mask], scores.loc[mask]
     if scores_out.empty:
@@ -243,7 +263,7 @@ def main() -> None:
         regime["observed_days"] = int(counts.get(regime["regime_id"], 0))
     write_json(public / "macro_regime_catalog.json", catalog)
     write_json(public / "macro_dimension_metadata.json", {
-        "model_version": "etf_daily_32_v1", "start_date": args.start,
+        "model_version": "etf_daily_32_v1_legacy_liquidity", "start_date": args.start,
         "warmup_start": args.warmup_start, "end_exclusive": args.end,
         "last_output_date": daily["date"].iloc[-1],
         "tickers": TICKERS, "bit_order": DIMENSIONS,
@@ -252,7 +272,9 @@ def main() -> None:
         "formulas": {"inflation": "r_TIP - (D_TIP / D_IEF) * r_IEF",
                      "growth": "r_SPY", "dollar": "r_UUP",
                      "credit": "r_HYG - (D_HYG / D_IEF) * r_IEF",
-                     "real_rates": "-r_TIP"},
+                     "real_rates": "-r_TIP",
+                     "liquidity": "clip(rolling_z(r_HYG), -3, 3) - clip(rolling_z(r_UUP), -3, 3)"},
+        "legacy_liquidity_method": "Original mean-centered 60-session z-scores including today; min 20; each anchor clipped before subtraction. Separate from five-bit regime classification.",
         "signal_units": "decimal ETF returns or weighted combinations; NOT yield changes",
         "score_method": "signal / preceding 60-session population std; min 20; clip +/-3",
         "percentile_method": "expanding CDF of clipped scores, including warmup and today",
@@ -264,7 +286,7 @@ def main() -> None:
                         "Income, CPI accrual, curve shifts and ETF pricing affect signals",
                         "Dimensions correlated; TIP reused in inflation and real rates",
                         "SPY measures equity direction, not observed economic growth",
-                        "No legacy liquidity_score; update frontend for three replacement axes"],
+                        "Legacy liquidity retained separately; inflation/growth remain the new proxy formulas"],
     })
     print(f"Done: {len(rows)} daily rows; all 32 catalog entries; outputs in {data} and {public}")
     print(scores_out["classification_status"].value_counts().to_string())
