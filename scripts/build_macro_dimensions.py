@@ -1,309 +1,115 @@
-#!/usr/bin/env python3
-"""
-Build daily macro dimension scores for Majorah.
-
-Outputs:
-- data/macro_anchor_prices.csv
-- data/macro_anchor_returns.csv
-- data/macro_dimension_scores.csv
-- public/data/macro_dimension_scores.json
-
-Dimensions:
-1) Inflation
-2) Growth
-3) Liquidity
-
-Scoring approach:
-- Pull daily adjusted close prices for all anchors
-- Compute daily returns
-- Convert each anchor's return into a rolling z-score
-- For each dimension:
-    score = mean(zscores of positive anchors) - mean(zscores of negative anchors)
-
-Sign convention:
-- Higher inflation_score  => more inflationary day
-- Higher growth_score     => more growth / risk-on day
-- Higher liquidity_score  => easier liquidity / easier financial conditions
-
-If you want "tight liquidity" instead, multiply liquidity_score by -1.
-"""
-
-from __future__ import annotations
-
-import json
-import math
-import os
-from pathlib import Path
-from typing import Dict, List
-
-import numpy as np
-import pandas as pd
-import yfinance as yf
-
-
-# =========================
-# Config
-# =========================
-
-START_DATE = "2024-01-01"
-WARMUP_START = "2023-06-01"   # extra history so rolling z-scores stabilize
-ROLLING_WINDOW = 60           # trading days for z-score normalization
-MIN_PERIODS = 20
-CLIP_Z = 3.0                  # clip extreme z-scores
-SMOOTH_SPAN = 5               # EMA smoothing for optional smoothed scores
-
-ROOT = Path(__file__).resolve().parents[1]
-DATA_DIR = ROOT / "data"
-PUBLIC_DATA_DIR = ROOT / "public" / "data"
-
-DATA_DIR.mkdir(parents=True, exist_ok=True)
-PUBLIC_DATA_DIR.mkdir(parents=True, exist_ok=True)
-
-# ---------------------------------------------------------
-# Anchor definitions
-# ---------------------------------------------------------
-# "positive" = anchors that should push the dimension score UP
-# "negative" = anchors that should push the dimension score DOWN
-#
-# These are based on your simplified framework, with one practical tweak:
-# for liquidity, positive means easier liquidity, so HYG is positive and UUP is negative.
-#
-# You can edit these freely.
-# ---------------------------------------------------------
-
-DIMENSIONS: Dict[str, Dict[str, List[str]]] = {
-    "inflation": {
-        "positive": ["GLD", "XLE"],
-        "negative": ["TLT"],
-    },
-    "growth": {
-        "positive": ["QQQ", "IWM"],
-        "negative": ["PSQ", "SH"],
-    },
-    "liquidity": {
-        "positive": ["HYG"],   # easier liquidity / better credit conditions
-        "negative": ["UUP"],   # dollar strength = tighter global liquidity
-    },
-}
-
-# If you decide later that inverse ETFs are too path-dependent,
-# a cleaner alternative growth definition would be:
-#
-# "growth": {
-#     "positive": ["QQQ", "IWM"],
-#     "negative": ["XLP", "XLU"],
-# }
-
-
-# =========================
-# Helpers
-# =========================
-
-def flatten_unique_tickers(dim_map: Dict[str, Dict[str, List[str]]]) -> List[str]:
-    tickers = []
-    seen = set()
-    for dim_cfg in dim_map.values():
-        for side in ("positive", "negative"):
-            for tkr in dim_cfg.get(side, []):
-                if tkr not in seen:
-                    seen.add(tkr)
-                    tickers.append(tkr)
-    return tickers
-
-
-def download_prices(tickers: List[str], start_date: str) -> pd.DataFrame:
-    """
-    Download adjusted close prices from Yahoo Finance.
-    """
-    if not tickers:
-        raise ValueError("No tickers supplied.")
-
-    df = yf.download(
-        tickers=tickers,
-        start=start_date,
-        auto_adjust=True,
-        progress=False,
-        group_by="column",
-        threads=True,
-    )
-
-    if df.empty:
-        raise ValueError("No price data downloaded.")
-
-    # yfinance returns different shapes depending on number of tickers
-    if isinstance(df.columns, pd.MultiIndex):
-        if "Close" in df.columns.levels[0]:
-            prices = df["Close"].copy()
+        scores[dim] = score
+        flat = raw.notna() & raw.abs().le(FLAT_EPSILON)
+        direction = np.sign(raw).mask(flat).ffill().where(raw.notna())
+        states[dim] = direction
+        out[f"{dim}_signal"] = raw
+        out[f"{dim}_score"] = score
+        out[f"{dim}_score_ema{SMOOTH_SPAN}"] = score.ewm(span=SMOOTH_SPAN, adjust=False).mean().where(score.notna())
+        out[f"{dim}_pct_rank"] = expanding_rank(score)
+        out[f"{dim}_flat"] = flat
+    rows = []
+    for date, state in states.iterrows():
+        missing = signals.loc[date].isna()
+        flat_dims = [d for d in DIMENSIONS if out.at[date, f"{d}_flat"]]
+        if missing.any():
+            row = {"classification_status": "missing_data", "regime_id": None}
+        elif state.isna().any():
+            row = {"classification_status": "unresolved_flat", "regime_id": None}
         else:
-            # Fallback to adjusted close naming if needed
-            first_level = list(df.columns.levels[0])
-            raise ValueError(f"Unexpected yfinance column structure: {first_level}")
-    else:
-        # single ticker case
-        prices = df.to_frame(name=tickers[0])
-
-    prices = prices.sort_index()
-    prices = prices.dropna(how="all")
-
-    # Keep only requested tickers in the original order
-    prices = prices[[c for c in tickers if c in prices.columns]]
-
-    missing = [t for t in tickers if t not in prices.columns]
-    if missing:
-        print(f"Warning: missing tickers in downloaded data: {missing}")
-
-    return prices
+            row = describe(tuple(int(state[d] > 0) for d in DIMENSIONS))
+            row["classification_status"] = "flat_carried" if flat_dims else "complete"
+        row["missing_dimensions"] = ",".join(missing.index[missing])
+        row["flat_dimensions"] = ",".join(flat_dims)
+        rows.append(row)
+    out = out.join(pd.DataFrame(rows, index=signals.index))
+    out["regime_id"] = out["regime_id"].astype("Int64")
+    # Magnitude of weakest axis; not a probability or statistical confidence.
+    out["min_axis_strength"] = scores.abs().min(axis=1, skipna=False)
+    return out
 
 
-def rolling_zscore(
-    s: pd.Series,
-    window: int = 60,
-    min_periods: int = 20,
-    clip_z: float | None = 3.0,
-) -> pd.Series:
-    """
-    Rolling z-score of a series.
-    """
-    roll_mean = s.rolling(window=window, min_periods=min_periods).mean()
-    roll_std = s.rolling(window=window, min_periods=min_periods).std(ddof=0)
-
-    z = (s - roll_mean) / roll_std.replace(0, np.nan)
-
-    if clip_z is not None:
-        z = z.clip(lower=-clip_z, upper=clip_z)
-
-    return z
+def write_json(path: Path, value) -> None:
+    temp = path.with_suffix(path.suffix + ".tmp")
+    temp.write_text(json.dumps(value, indent=2, allow_nan=False) + "\n", encoding="utf-8")
+    temp.replace(path)
 
 
-def build_dimension_score(
-    zret: pd.DataFrame,
-    positive: List[str],
-    negative: List[str],
-) -> pd.Series:
-    """
-    score = mean(positive anchors) - mean(negative anchors)
-    """
-    pos_cols = [c for c in positive if c in zret.columns]
-    neg_cols = [c for c in negative if c in zret.columns]
-
-    if not pos_cols and not neg_cols:
-        return pd.Series(index=zret.index, dtype=float)
-
-    pos_mean = zret[pos_cols].mean(axis=1) if pos_cols else pd.Series(0.0, index=zret.index)
-    neg_mean = zret[neg_cols].mean(axis=1) if neg_cols else pd.Series(0.0, index=zret.index)
-
-    return pos_mean - neg_mean
-
-
-def pct_rank_expanding(s: pd.Series) -> pd.Series:
-    """
-    Expanding percentile rank:
-    on each date, rank today's value against all values observed up to that date.
-    """
-    vals = []
-    ranks = []
-
-    for x in s.values:
-        vals.append(x)
-        arr = pd.Series(vals, dtype=float).dropna()
-        if arr.empty or pd.isna(x):
-            ranks.append(np.nan)
-        else:
-            ranks.append((arr <= x).mean())
-
-    return pd.Series(ranks, index=s.index)
-
-
-def safe_round(v, n=6):
-    if pd.isna(v):
-        return None
-    return round(float(v), n)
-
-
-# =========================
-# Main
-# =========================
-
-def main():
-    tickers = flatten_unique_tickers(DIMENSIONS)
-    print("Downloading anchors:", tickers)
-
-    prices = download_prices(tickers, WARMUP_START)
-    returns = prices.pct_change()
-
-    # Rolling z-score normalize each anchor return series
-    zret = pd.DataFrame(index=returns.index)
-    for col in returns.columns:
-        zret[col] = rolling_zscore(
-            returns[col],
-            window=ROLLING_WINDOW,
-            min_periods=MIN_PERIODS,
-            clip_z=CLIP_Z,
-        )
-
-    # Build dimension scores
-    scores = pd.DataFrame(index=returns.index)
-
-    for dim_name, cfg in DIMENSIONS.items():
-        raw = build_dimension_score(
-            zret=zret,
-            positive=cfg.get("positive", []),
-            negative=cfg.get("negative", []),
-        )
-
-        smoothed = raw.ewm(span=SMOOTH_SPAN, adjust=False).mean()
-        rank = pct_rank_expanding(raw)
-
-        scores[f"{dim_name}_score"] = raw
-        scores[f"{dim_name}_score_ema{SMOOTH_SPAN}"] = smoothed
-        scores[f"{dim_name}_pct_rank"] = rank
-
-    # Restrict final output to requested period
-    prices_out = prices.loc[prices.index >= pd.Timestamp(START_DATE)].copy()
-    returns_out = returns.loc[returns.index >= pd.Timestamp(START_DATE)].copy()
-    scores_out = scores.loc[scores.index >= pd.Timestamp(START_DATE)].copy()
-
-    # Add helpful metadata columns
-    scores_out = scores_out.reset_index().rename(columns={"Date": "date", "index": "date"})
-    scores_out["date"] = pd.to_datetime(scores_out["date"]).dt.strftime("%Y-%m-%d")
-
-    # Save CSVs
-    prices_out.to_csv(DATA_DIR / "macro_anchor_prices.csv", index_label="date")
-    returns_out.to_csv(DATA_DIR / "macro_anchor_returns.csv", index_label="date")
-    scores_out.to_csv(DATA_DIR / "macro_dimension_scores.csv", index=False)
-
-    # Save JSON for frontend use
-    json_rows = []
-    for _, row in scores_out.iterrows():
-        json_rows.append(
-            {
-                "date": row["date"],
-                "inflation_score": safe_round(row.get("inflation_score")),
-                f"inflation_score_ema{SMOOTH_SPAN}": safe_round(row.get(f"inflation_score_ema{SMOOTH_SPAN}")),
-                "inflation_pct_rank": safe_round(row.get("inflation_pct_rank")),
-                "growth_score": safe_round(row.get("growth_score")),
-                f"growth_score_ema{SMOOTH_SPAN}": safe_round(row.get(f"growth_score_ema{SMOOTH_SPAN}")),
-                "growth_pct_rank": safe_round(row.get("growth_pct_rank")),
-                "liquidity_score": safe_round(row.get("liquidity_score")),
-                f"liquidity_score_ema{SMOOTH_SPAN}": safe_round(row.get(f"liquidity_score_ema{SMOOTH_SPAN}")),
-                "liquidity_pct_rank": safe_round(row.get("liquidity_pct_rank")),
-            }
-        )
-
-    with open(PUBLIC_DATA_DIR / "macro_dimension_scores.json", "w", encoding="utf-8") as f:
-        json.dump(json_rows, f, indent=2)
-
-    # Also save the z-scored anchor returns for debugging / diagnostics
-    zret_out = zret.loc[zret.index >= pd.Timestamp(START_DATE)].copy()
-    zret_out.to_csv(DATA_DIR / "macro_anchor_zscores.csv", index_label="date")
-
-    print("Done.")
-    print(f"Saved: {DATA_DIR / 'macro_anchor_prices.csv'}")
-    print(f"Saved: {DATA_DIR / 'macro_anchor_returns.csv'}")
-    print(f"Saved: {DATA_DIR / 'macro_anchor_zscores.csv'}")
-    print(f"Saved: {DATA_DIR / 'macro_dimension_scores.csv'}")
-    print(f"Saved: {PUBLIC_DATA_DIR / 'macro_dimension_scores.json'}")
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    default_root = Path(__file__).resolve().parents[1]
+    parser.add_argument("--root", type=Path, default=default_root)
+    parser.add_argument("--start", default=START_DATE)
+    parser.add_argument("--warmup-start", default=WARMUP_START)
+    # Exclusive end: deliberately omit the current NY date, even after close,
+    # so intraday or not-yet-final ETF bars never receive completed labels.
+    parser.add_argument("--end", default=datetime.now(ZoneInfo("America/New_York")).date().isoformat())
+    args = parser.parse_args()
+    start, warmup, end = map(pd.Timestamp, [args.start, args.warmup_start, args.end])
+    today = pd.Timestamp(datetime.now(ZoneInfo("America/New_York")).date())
+    if not warmup < start < end or end > today:
+        raise ValueError("Require warmup-start < start < end <= today's New York date")
+    print("Downloading anchors:", TICKERS)
+    prices = download_prices(args.warmup_start, args.end)
+    returns = prices.pct_change(fill_method=None)
+    signals = daily_signals(returns)
+    scores = build_scores(signals)
+    mask = (prices.index >= start) & (prices.index < end)
+    prices_out, returns_out, scores_out = prices.loc[mask], returns.loc[mask], scores.loc[mask]
+    if scores_out.empty:
+        raise RuntimeError("No output dates; existing files untouched")
+    data, public = args.root / "data", args.root / "public" / "data"
+    data.mkdir(parents=True, exist_ok=True)
+    public.mkdir(parents=True, exist_ok=True)
+    for name, frame in [("macro_anchor_prices", prices_out),
+                        ("macro_anchor_returns", returns_out),
+                        ("macro_dimension_scores", scores_out)]:
+        path = data / f"{name}.csv"
+        temp = path.with_suffix(".csv.tmp")
+        frame.to_csv(temp, index_label="date")
+        temp.replace(path)
+    # Retain the diagnostic output; only this file uses mean-centered z-scores.
+    mean = returns.rolling(ROLLING_WINDOW, min_periods=MIN_PERIODS).mean().shift(1)
+    std = returns.rolling(ROLLING_WINDOW, min_periods=MIN_PERIODS).std(ddof=0).shift(1)
+    ((returns - mean) / std.replace(0, np.nan)).clip(-CLIP_Z, CLIP_Z).loc[mask].to_csv(
+        data / "macro_anchor_zscores.csv", index_label="date")
+    daily = scores_out.rename_axis("date").reset_index()
+    daily["date"] = daily["date"].dt.strftime("%Y-%m-%d")
+    # pandas converts missing values to JSON null; strict encoder checks output.
+    rows = json.loads(daily.to_json(orient="records", double_precision=10))
+    write_json(public / "macro_dimension_scores.json", rows)
+    catalog = [describe(bits) for bits in product((0, 1), repeat=5)]
+    counts = scores_out["regime_id"].value_counts()
+    for regime in catalog:
+        regime["observed_days"] = int(counts.get(regime["regime_id"], 0))
+    write_json(public / "macro_regime_catalog.json", catalog)
+    write_json(public / "macro_dimension_metadata.json", {
+        "model_version": "etf_daily_32_v1", "start_date": args.start,
+        "warmup_start": args.warmup_start, "end_exclusive": args.end,
+        "last_output_date": daily["date"].iloc[-1],
+        "tickers": TICKERS, "bit_order": DIMENSIONS,
+        "regime_id_rule": "1 + integer value of five-bit regime_code",
+        "duration_assumptions_years": DURATION,
+        "formulas": {"inflation": "r_TIP - (D_TIP / D_IEF) * r_IEF",
+                     "growth": "r_SPY", "dollar": "r_UUP",
+                     "credit": "r_HYG - (D_HYG / D_IEF) * r_IEF",
+                     "real_rates": "-r_TIP"},
+        "signal_units": "decimal ETF returns or weighted combinations; NOT yield changes",
+        "score_method": "signal / preceding 60-session population std; min 20; clip +/-3",
+        "percentile_method": "expanding CDF of clipped scores, including warmup and today",
+        "flat_policy": "last nonzero direction, explicitly flagged; no state if none exists",
+        "missing_policy": "no price filling; incomplete daily classification remains null",
+        "same_day_policy": "current New York calendar date excluded",
+        "status_counts": scores_out["classification_status"].value_counts().to_dict(),
+        "limitations": ["Fixed approximate durations, not historical duration matching",
+                        "Income, CPI accrual, curve shifts and ETF pricing affect signals",
+                        "Dimensions correlated; TIP reused in inflation and real rates",
+                        "SPY measures equity direction, not observed economic growth",
+                        "No legacy liquidity_score; update frontend for three replacement axes"],
+    })
+    print(f"Done: {len(rows)} daily rows; all 32 catalog entries; outputs in {data} and {public}")
+    print(scores_out["classification_status"].value_counts().to_string())
 
 
 if __name__ == "__main__":
     main()
+
