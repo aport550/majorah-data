@@ -7,7 +7,7 @@ import pandas as pd
 import numpy as np
 import yfinance as yf
 
-START_DATE = "2024-01-01"
+START_DATE = "2020-01-01"
 TRADING_DAYS = 252
 
 
