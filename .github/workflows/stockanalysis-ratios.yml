@@ -35,6 +35,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
+      - name: Show checked-out branch and commit
+        run: |
+          pwd
+          git branch --show-current
+          git log -1 --format="%h %s"
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -52,7 +58,7 @@ jobs:
           restore-keys: |
             stockanalysis-html-v1-${{ github.ref_name }}-
 
-      - name: Extract quarterly ratios
+      - name: Locate script and extract quarterly ratios
         env:
           INPUT_TICKERS: ${{ inputs.tickers }}
           INPUT_SLEEP: ${{ inputs.sleep_seconds }}
@@ -60,19 +66,44 @@ jobs:
           PYTHONUNBUFFERED: "1"
         run: |
           python - <<'PY'
+          import math
           import os
+          from pathlib import Path
           import re
           import subprocess
           import sys
 
-          command = [
-              sys.executable,
-              "scripts/build_stockanalysis_ratios.py",
-              "--universe", "data/universe.csv",
-              "--sleep", os.environ["INPUT_SLEEP"],
-              "--output", "ratio_results/stockanalysis_ratios.csv",
-              "--status-output", "ratio_results/stockanalysis_ratios_status.csv",
-          ]
+          root = Path(os.environ["GITHUB_WORKSPACE"]).resolve()
+          os.chdir(root)
+
+          print(f"Repository: {root}", flush=True)
+
+          matches = sorted(
+              path
+              for path in root.rglob("build_stockanalysis_ratios.py")
+              if path.is_file() and ".git" not in path.relative_to(root).parts
+          )
+
+          print(
+              "Matching scripts:",
+              [str(path.relative_to(root)) for path in matches],
+              flush=True,
+          )
+
+          if len(matches) != 1:
+              print("Python files actually present:", flush=True)
+
+              for path in sorted(root.rglob("*.py")):
+                  if ".git" not in path.relative_to(root).parts:
+                      print(repr(str(path.relative_to(root))), flush=True)
+
+              raise SystemExit(
+                  "Expected exactly one build_stockanalysis_ratios.py. "
+                  "Check its exact filename and that it is committed "
+                  "to the branch selected for this workflow."
+              )
+
+          script_path = matches[0]
 
           tickers = [
               ticker
@@ -83,13 +114,77 @@ jobs:
               if ticker
           ]
 
+          try:
+              delay = float(os.environ.get("INPUT_SLEEP", "3"))
+          except ValueError:
+              raise SystemExit("Sleep must be a number, such as 3 or 5.")
+
+          if not math.isfinite(delay) or delay < 0:
+              raise SystemExit("Sleep must be a finite, nonnegative number.")
+
+          # Prefer the universe at the repository root.
+          universe_path = root / "data" / "universe.csv"
+
+          # If the full-universe run needs it, locate a nested copy.
+          if not tickers and not universe_path.is_file():
+              universe_matches = sorted(
+                  path
+                  for path in root.rglob("universe.csv")
+                  if path.is_file()
+                  and ".git" not in path.relative_to(root).parts
+              )
+
+              print(
+                  "Universe candidates:",
+                  [str(path.relative_to(root)) for path in universe_matches],
+                  flush=True,
+              )
+
+              if len(universe_matches) != 1:
+                  raise SystemExit(
+                      "Cannot identify universe.csv. Commit it at "
+                      "data/universe.csv, or enter NVDA AAPL to test "
+                      "without a universe file."
+                  )
+
+              universe_path = universe_matches[0]
+
+          output_dir = root / "ratio_results"
+          output_dir.mkdir(parents=True, exist_ok=True)
+
+          # Remove only these generated outputs so an unsuccessful run
+          # cannot upload an old CSV that was checked into the repository.
+          for filename in (
+              "stockanalysis_ratios.csv",
+              "stockanalysis_ratios_status.csv",
+          ):
+              (output_dir / filename).unlink(missing_ok=True)
+
+          command = [
+              sys.executable,
+              str(script_path),
+              "--sleep", str(delay),
+              "--cache-dir", str(root / "data" / "stockanalysis_cache"),
+              "--output", str(output_dir / "stockanalysis_ratios.csv"),
+              "--status-output",
+              str(output_dir / "stockanalysis_ratios_status.csv"),
+          ]
+
           if tickers:
               command.extend(["--tickers", *tickers])
+          else:
+              command.extend(["--universe", str(universe_path)])
 
           if os.environ.get("INPUT_REFRESH", "").lower() == "true":
               command.append("--refresh")
 
-          raise SystemExit(subprocess.call(command))
+          print(f"Using script: {script_path}", flush=True)
+          print(
+              f"Tickers: {tickers}" if tickers else f"Universe: {universe_path}",
+              flush=True,
+          )
+
+          raise SystemExit(subprocess.call(command, cwd=root))
           PY
 
       - name: Upload CSV results
