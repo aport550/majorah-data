@@ -1,0 +1,109 @@
+name: Stock Analysis - Quarterly Ratios
+
+on:
+  workflow_dispatch:
+    inputs:
+      tickers:
+        description: "Test tickers (NVDA AAPL); leave blank for full universe"
+        required: false
+        default: ""
+        type: string
+      sleep_seconds:
+        description: "Seconds between requests, plus 0–1 second jitter"
+        required: true
+        default: "3"
+        type: string
+      refresh:
+        description: "Ignore cached pages and fetch fresh data"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stockanalysis-ratios-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install "pandas>=2.2,<3" "requests>=2.32,<3" "lxml>=5,<7"
+
+      - name: Restore page cache
+        uses: actions/cache/restore@v4
+        with:
+          path: data/stockanalysis_cache
+          key: stockanalysis-html-v1-${{ github.ref_name }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            stockanalysis-html-v1-${{ github.ref_name }}-
+
+      - name: Extract quarterly ratios
+        env:
+          INPUT_TICKERS: ${{ inputs.tickers }}
+          INPUT_SLEEP: ${{ inputs.sleep_seconds }}
+          INPUT_REFRESH: ${{ inputs.refresh }}
+          PYTHONUNBUFFERED: "1"
+        run: |
+          python - <<'PY'
+          import os
+          import re
+          import subprocess
+          import sys
+
+          command = [
+              sys.executable,
+              "build_stockanalysis_ratios.py",
+              "--universe", "data/universe.csv",
+              "--sleep", os.environ["INPUT_SLEEP"],
+              "--output", "ratio_results/stockanalysis_ratios.csv",
+              "--status-output", "ratio_results/stockanalysis_ratios_status.csv",
+          ]
+
+          tickers = [
+              ticker
+              for ticker in re.split(
+                  r"[\s,]+",
+                  os.environ.get("INPUT_TICKERS", "").strip()
+              )
+              if ticker
+          ]
+
+          if tickers:
+              command.extend(["--tickers", *tickers])
+
+          if os.environ.get("INPUT_REFRESH", "").lower() == "true":
+              command.append("--refresh")
+
+          raise SystemExit(subprocess.call(command))
+          PY
+
+      - name: Upload CSV results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stockanalysis-ratios-${{ github.run_number }}-${{ github.run_attempt }}
+          path: ratio_results/*.csv
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Save page cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: data/stockanalysis_cache
+          key: stockanalysis-html-v1-${{ github.ref_name }}-${{ github.run_id }}-${{ github.run_attempt }}
