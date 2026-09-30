@@ -67,7 +67,7 @@ jobs:
 
           command = [
               sys.executable,
-              "build_stockanalysis_ratios.py",
+              "scripts/build_stockanalysis_ratios.py",
               "--universe", "data/universe.csv",
               "--sleep", os.environ["INPUT_SLEEP"],
               "--output", "ratio_results/stockanalysis_ratios.csv",
