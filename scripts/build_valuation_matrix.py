@@ -1,349 +1,324 @@
 #!/usr/bin/env python3
-"""Build five-year historical valuation screens from FMP stable APIs.
+"""Download the latest 20 available historical quarterly ratio columns.
 
-Install: python -m pip install pandas numpy requests
-Set FMP_API_KEY in your environment; run from the project root.
-Example: python build_valuation_matrix.py --tickers AAPL MSFT --frequency quarterly
-Default universe: data/universe.csv, column Ticker; optional FMP_Ticker override.
-Default frequency: monthly. Outputs: data/valuation_{history,summary,coverage}.csv
-and data/valuations.json. --public also writes frontend CSV/JSON to public/data.
-Confirm your vendor license permits public redistribution before using --public.
+Python 3.9+. Install: python3 -m pip install pandas requests lxml
+Run from project root: python3 build_stockanalysis_ratios.py
+Test: python3 build_stockanalysis_ratios.py --tickers NVDA AAPL
+Slower: python3 build_stockanalysis_ratios.py --sleep 5
 
-METHOD / LIMITS
-- Company market cap from FMP (never dividend-adjusted Yahoo prices).
-- EV = market cap + total debt + preferred stock + minority interest - cash.
-- Common book equity = stockholders' equity - preferred stock.
-- Flow denominators sum four consecutive vendor-normalized standalone quarters.
-- Financials available from the day AFTER the latest filing/acceptance date in
-  the four-quarter window. Unknown filing dates are excluded, never guessed.
-- Latest/restated vendor statements: NOT a vintage point-in-time backtest feed.
-- USD quote AND USD financial reporting only in this version. Other currencies
-  and cross-currency ADRs are logged as unsupported; no implicit FX conversion.
-- Funds skipped. Financial Services EV metrics suppressed; P/B retained.
-- Nonpositive denominators and nonpositive EV are null, not 'cheap'.
-- A current universe has survivorship bias; delisted names must be supplied.
-- Current means the latest available historical-market-cap observation, with
-  its actual date exposed. No forward estimates or corporate-action adjustments
-  beyond those supplied by FMP. Validate vendor data before acting on outliers.
-- Cache is local, 24-hour TTL by default. API key is never stored or logged.
+Input: data/universe.csv, required column Ticker.
+Optional StockAnalysisPath column overrides the stock page, e.g. /stocks/brk-b/
+or /quote/tsx/SHOP/. Otherwise dots in tickers become hyphens in /stocks/{ticker}/.
+No API key. Requests are sequential with 3-4 seconds between requests by default.
+Successful pages are cached for 1 day; --refresh ignores the cache.
+
+Output: data/stockanalysis_ratios.csv (one row per ticker/fiscal quarter).
+Current included as a separate row with quarter_rank=0; TTM columns excluded. quarter_rank=1 means latest historical quarter.
+Missing source values stay blank, including negative/zero values if supplied.
+No invented quarters for recent IPOs or incomplete source coverage.
+Coverage/errors: data/stockanalysis_ratios_status.csv.
+Up to 20 quarterly columns PER STOCK, not 20 nonmissing values per metric.
+These are website-reported ratios, not a vintage point-in-time backtest dataset.
+Buyback yield is stored in percentage points: 2.13% becomes 2.13, not 0.0213.
+Negative buyback yield values are preserved (dilution).
+Period labels are fiscal, so fiscal years may differ from calendar years.
+
+429 responses respect Retry-After; persistent 429 or 401/403 stops the run.
+No proxies, browser impersonation, paywall bypasses, or concurrent requests.
+Saved checkpoints and HTML cache let reruns avoid repeating successful requests.
+For GitHub Actions, persist data/stockanalysis_cache with actions/cache if desired.
 """
 import argparse
+import datetime as dt
+from email.utils import parsedate_to_datetime
 import hashlib
-import json
+from io import StringIO
 import math
-import os
 from pathlib import Path
+import random
+import re
+import sys
 import time
+from urllib.parse import urlparse
 
-import numpy as np
 import pandas as pd
 import requests
 
-BASE = "https://financialmodelingprep.com/stable"
-METRICS = ["pb", "ev_ebitda", "ev_sales", "ev_ocf", "ev_fcf"]
+METRICS = {
+    'forward_pe': ('forward pe', 'forward p/e', 'forward pe ratio'),
+    'ps_ratio': ('ps ratio', 'p/s ratio'),
+    'peg_ratio': ('peg ratio', 'peg'),
+    'pb_ratio': ('pb ratio', 'p/b ratio'),
+    'ev_ebitda': ('ev/ebitda ratio', 'ev/ebitda'),
+    'ev_sales': ('ev/sales ratio', 'ev/sales'),
+    'ev_fcf': ('ev/fcf ratio', 'ev/fcf'),
+    'current_ratio': ('current ratio',),
+    'buyback_yield_dilution_pct': ('buyback yield / dilution', 'buyback yield/dilution'),
+}
+COLUMNS = ['Ticker', 'quarter_rank', 'fiscal_quarter', 'period_end', *METRICS,
+           'source_url', 'fetched_at_utc']
+STATUS_COLUMNS = ['Ticker', 'status', 'quarters', 'missing_metrics', 'missing_cells',
+                  'source_url', 'cache_used', 'message']
 
 
-class APIError(RuntimeError):
+class StopRun(RuntimeError):
     pass
 
 
-class Client:
-    def __init__(self, key, cache, pause=0.3, ttl=24):
-        self.key, self.cache, self.pause, self.ttl = key, Path(cache), pause, ttl
+def normalize(value):
+    return re.sub(r'\s+', ' ', str(value).replace('\xa0', ' ')).strip().lower()
+
+
+def numeric(value):
+    text = str(value).strip().replace(',', '').replace('−', '-').removesuffix('%')
+    if text in ('', '-', '—', '–', 'N/A', 'n/a', 'nan', 'None'):
+        return None
+    if text.startswith('(') and text.endswith(')'):
+        text = '-' + text[1:-1]
+    try:
+        result = float(text)
+        return result if math.isfinite(result) else None
+    except ValueError:
+        return None
+
+
+def parts(column):
+    return list(column) if isinstance(column, tuple) else [column]
+
+
+def full_date(values):
+    for value in reversed(values):
+        match = re.search(r'\b([A-Z][a-z]{2,8} \d{1,2}, \d{4})\b', str(value))
+        if match:
+            parsed = pd.to_datetime(match.group(1), errors='coerce')
+            if pd.notna(parsed):
+                return parsed.date().isoformat()
+        match = re.search(r'\b(\d{4}-\d{2}-\d{2})\b', str(value))
+        if match:
+            return match.group(1)
+    return ''
+
+
+def parse_tables(html, ticker, url, fetched):
+    tables = pd.read_html(StringIO(html), flavor='lxml')
+    by_quarter, seen_metrics = {}, set()
+    alias_map = {alias: metric for metric, aliases in METRICS.items() for alias in aliases}
+    for table in tables:
+        if table.empty:
+            continue
+        period_row = next((row for _, row in table.iterrows()
+                           if normalize(row.iloc[0]) == 'period ending'), None)
+        for _, row in table.iterrows():
+            metric = alias_map.get(normalize(row.iloc[0]))
+            if not metric:
+                continue
+            seen_metrics.add(metric)
+            for col_index in range(1, len(table.columns)):
+                headers = parts(table.columns[col_index])
+                quarter = next((str(x).strip() for x in headers
+                                if re.fullmatch(r'Q[1-4]\s+\d{4}', str(x).strip()) or str(x).strip() == 'Current'), None)
+                if quarter is None:
+                    continue  # excludes TTM, annual columns, ads
+                candidates = headers + ([period_row.iloc[col_index]] if period_row is not None else [])
+                date = full_date(candidates)
+                record = by_quarter.setdefault(quarter, {
+                    'Ticker': ticker, 'fiscal_quarter': quarter, 'period_end': date,
+                    **{m: None for m in METRICS}, 'source_url': url, 'fetched_at_utc': fetched,
+                })
+                if date:
+                    if record['period_end'] and date != record['period_end']:
+                        raise ValueError('Conflicting period dates across tables')
+                    record['period_end'] = date
+                record[metric] = numeric(row.iloc[col_index])
+    if not by_quarter or not seen_metrics:
+        raise ValueError('No expected quarterly ratio tables found; layout/access may have changed')
+    # Fiscal year/quarter ordering works for non-calendar fiscal years too.
+    current = by_quarter.pop('Current', None)
+    ordered = sorted(by_quarter.values(),
+                     key=lambda r: (int(r['fiscal_quarter'].split()[1]), int(r['fiscal_quarter'][1])),
+                     reverse=True)[:20]
+    for rank, row in enumerate(ordered, 1):
+        row['quarter_rank'] = rank
+    if not any(r[m] is not None for r in ordered for m in METRICS):
+        raise ValueError('Quarterly labels found but all nine metrics are missing')
+    if current is not None:
+        current['quarter_rank'] = 0
+        ordered.append(current)
+    return ordered, sorted(set(METRICS) - seen_metrics)
+
+
+def source_url(ticker, override):
+    if pd.notna(override) and str(override).strip():
+        path = str(override).strip()
+        if path.startswith('https://'):
+            parsed = urlparse(path)
+            if parsed.netloc != 'stockanalysis.com':
+                raise ValueError('StockAnalysisPath must point to stockanalysis.com')
+            path = parsed.path
+        if not re.fullmatch(r'/(?:stocks/[A-Za-z0-9.-]+|quote/[A-Za-z0-9.-]+/[A-Za-z0-9.-]+)(?:/financials/ratios)?/?', path):
+            raise ValueError('Invalid StockAnalysisPath; use /stocks/nvda/ or /quote/tsx/SHOP/')
+    else:
+        symbol = ticker.lower().replace('.', '-')
+        if not re.fullmatch(r'[a-z0-9-]+', symbol):
+            raise ValueError('Unsupported ticker format; supply StockAnalysisPath')
+        path = '/stocks/' + symbol + '/'
+    path = path.rstrip('/')
+    if not path.endswith('/financials/ratios'):
+        path += '/financials/ratios'
+    return 'https://stockanalysis.com' + path + '/?p=quarterly'
+
+
+class Fetcher:
+    def __init__(self, args):
+        self.args = args
+        self.cache = Path(args.cache_dir)
         self.cache.mkdir(parents=True, exist_ok=True)
         self.session = requests.Session()
+        self.session.headers['User-Agent'] = 'Majorah-Ratio-Research/1.0'
+        self.last_request = None
 
-    def get(self, endpoint, **params):
-        digest = hashlib.sha256(json.dumps([endpoint, params], sort_keys=True).encode()).hexdigest()
-        path = self.cache / (digest + ".json")
-        if path.exists() and time.time() - path.stat().st_mtime < self.ttl * 3600:
+    def get(self, url):
+        path = self.cache / (hashlib.sha256(url.encode()).hexdigest() + '.html')
+        if not self.args.refresh and path.exists() and time.time()-path.stat().st_mtime < self.args.cache_days*86400:
+            fetched = dt.datetime.fromtimestamp(path.stat().st_mtime, dt.timezone.utc).isoformat()
+            return path.read_text(encoding='utf-8'), fetched, True, path
+        for attempt in range(3):
+            if self.last_request is not None:
+                delay = self.args.sleep + random.uniform(0, 1)
+                time.sleep(max(0, delay-(time.monotonic()-self.last_request)))
             try:
-                return json.loads(path.read_text())
-            except (ValueError, OSError):
-                pass
-        for attempt in range(5):
-            time.sleep(self.pause)
-            try:
-                response = self.session.get(BASE + "/" + endpoint,
-                                            params={**params, "apikey": self.key}, timeout=45)
-            except requests.RequestException:
-                if attempt == 4:
-                    raise APIError(f"{endpoint}: network failure") from None
-                time.sleep(2 ** attempt)
+                response = self.session.get(url, timeout=40)
+            except requests.RequestException as exc:
+                self.last_request = time.monotonic()
+                if attempt == 2:
+                    raise RuntimeError('Network failure: ' + type(exc).__name__) from None
+                time.sleep(5 * (attempt+1))
                 continue
-            if response.status_code == 429 or response.status_code >= 500:
-                if attempt == 4:
-                    raise APIError(f"{endpoint}: HTTP {response.status_code}; retry later")
-                time.sleep(min(30, 2 ** (attempt + 1)))
+            self.last_request = time.monotonic()
+            if response.status_code in (401, 403):
+                raise StopRun(f'HTTP {response.status_code}: access blocked; stopping requests')
+            if response.status_code == 429:
+                if attempt == 2:
+                    raise StopRun('Persistent HTTP 429; stopping requests, rerun later')
+                header = response.headers.get('Retry-After', '')
+                try:
+                    wait = float(header)
+                except ValueError:
+                    try:
+                        wait = (parsedate_to_datetime(header) - dt.datetime.now(dt.timezone.utc)).total_seconds()
+                    except (ValueError, TypeError, OverflowError):
+                        wait = 30 * (attempt+1)
+                wait = max(30, wait)
+                if wait > 300:
+                    raise StopRun(f'HTTP 429 requests {wait:.0f}s cooldown; stopping, rerun later')
+                print(f'  Rate limited; waiting {wait:.0f}s', flush=True)
+                # Short sleep chunks keep Ctrl-C responsive.
+                deadline = time.monotonic() + wait
+                while time.monotonic() < deadline:
+                    time.sleep(min(5, max(0, deadline-time.monotonic())))
+                continue
+            if response.status_code >= 500 and attempt < 2:
+                time.sleep(5 * (attempt+1))
                 continue
             if response.status_code != 200:
-                raise APIError(f"{endpoint}: HTTP {response.status_code}; check key/plan/access")
-            try:
-                result = response.json()
-            except ValueError:
-                raise APIError(f"{endpoint}: invalid JSON") from None
-            if not isinstance(result, list) or any(not isinstance(x, dict) for x in result):
-                raise APIError(f"{endpoint}: unexpected response; check plan/API schema")
-            temp = path.with_suffix(".tmp")
-            temp.write_text(json.dumps(result))
-            temp.replace(path)
-            return result
+                raise RuntimeError(f'HTTP {response.status_code}')
+            if urlparse(response.url).path.rstrip('/') != urlparse(url).path.rstrip('/'):
+                raise ValueError('Unexpected redirect; check ticker / StockAnalysisPath')
+            return response.text, dt.datetime.now(dt.timezone.utc).isoformat(), False, path
+        raise RuntimeError('Request retries exhausted')
 
 
-def number(row, key):
-    try:
-        value = float(row.get(key))
-        return value if math.isfinite(value) else np.nan
-    except (TypeError, ValueError):
-        return np.nan
-
-
-def filing_day(row):
-    # Use all known dates conservatively; acceptedDate may contain a time.
-    dates = [pd.to_datetime(str(row.get(k, ""))[:10], errors="coerce")
-             for k in ("filingDate", "acceptedDate")]
-    dates = [d for d in dates if pd.notna(d)]
-    return max(dates) if dates else pd.NaT
-
-
-def statements_by_date(rows):
-    result = {}
-    for row in rows:
-        if row.get("period") not in ("Q1", "Q2", "Q3", "Q4"):
-            continue
-        date = pd.to_datetime(row.get("date"), errors="coerce")
-        if pd.isna(date):
-            continue
-        # Prefer latest supplied version when duplicates exist; explicitly restated.
-        previous = result.get(date)
-        if previous is None or str(row.get("acceptedDate", "")) > str(previous.get("acceptedDate", "")):
-            result[date] = row
-    return result
-
-
-def build_fundamentals(income, balance, cash):
-    inc, bal, cf = map(statements_by_date, (income, balance, cash))
-    dates = sorted(set(inc) & set(bal) & set(cf))
-    output = []
-    for j in range(3, len(dates)):
-        window = dates[j-3:j+1]
-        gaps = [(b-a).days for a, b in zip(window, window[1:])]
-        if not all(65 <= gap <= 115 for gap in gaps):
-            continue  # missing quarter / semiannual reporting / transition periods
-        records = [source[d] for d in window for source in (inc, bal, cf)]
-        if any(r.get("reportedCurrency") != "USD" for r in records):
-            continue
-        filings = [filing_day(r) for r in records]
-        if any(pd.isna(x) for x in filings):
-            continue
-        end = window[-1]
-        available = max(filings) + pd.Timedelta(days=1)
-        if available <= end:
-            continue
-        row = {"fundamental_date": end, "available_date": available}
-        for field, source, target in [
-            ("revenue", inc, "revenue_ttm"), ("ebitda", inc, "ebitda_ttm"),
-            ("operatingCashFlow", cf, "ocf_ttm"), ("freeCashFlow", cf, "fcf_ttm")
-        ]:
-            values = [number(source[d], field) for d in window]
-            row[target] = sum(values) if all(np.isfinite(values)) else np.nan
-        b = bal[end]
-        preferred = number(b, "preferredStock")
-        row.update(debt=number(b, "totalDebt"), cash=number(b, "cashAndCashEquivalents"),
-                   preferred=preferred, minority=number(b, "minorityInterest"),
-                   book=number(b, "totalStockholdersEquity") - preferred)
-        output.append(row)
-    return pd.DataFrame(output)
-
-
-def ratio(numerator, denominator):
-    return numerator / denominator if np.isfinite(numerator) and numerator > 0 and np.isfinite(denominator) and denominator > 0 else np.nan
-
-
-def value_on(cap_date, market_cap, fundamentals, financial_sector, max_age):
-    eligible = fundamentals[fundamentals.available_date <= cap_date]
-    if eligible.empty:
-        return None
-    f = eligible.sort_values("fundamental_date").iloc[-1]
-    age = (cap_date - f.fundamental_date).days
-    ev = market_cap + f.debt + f.preferred + f.minority - f.cash
-    row = {"date": cap_date.date().isoformat(), "market_cap": market_cap,
-           "fundamental_date": f.fundamental_date.date().isoformat(),
-           "available_date": f.available_date.date().isoformat(),
-           "fundamental_age_days": age, "enterprise_value": ev,
-           "stale_fundamentals": age > max_age,
-           **{k: f[k] for k in ("book", "revenue_ttm", "ebitda_ttm", "ocf_ttm", "fcf_ttm")}}
-    row["pb"] = ratio(market_cap, f.book)
-    for metric, denom in [("ev_ebitda", "ebitda_ttm"), ("ev_sales", "revenue_ttm"),
-                          ("ev_ocf", "ocf_ttm"), ("ev_fcf", "fcf_ttm")]:
-        row[metric] = np.nan if financial_sector else ratio(ev, f[denom])
-    if age > max_age:
-        row.update({metric: np.nan for metric in METRICS})
-    return row
-
-
-def summarize(history, current, minimum):
-    result = {k: current[k] for k in ("date", "fundamental_date", "fundamental_age_days", "stale_fundamentals")}
-    for metric in METRICS:
-        # Exclude the current observation if it coincides with a historical snapshot.
-        values = np.array([r[metric] for r in history if r["date"] < current["date"] and np.isfinite(r[metric])])
-        value = current[metric]
-        result.update({metric: value, metric + "_n": len(values),
-                       metric + "_median": float(np.median(values)) if len(values) else np.nan,
-                       metric + "_percentile": np.nan, metric + "_discount_pct": np.nan})
-        if len(values) >= minimum and np.isfinite(value):
-            # Midrank ties. Low percentile = low multiple relative to own history.
-            result[metric + "_percentile"] = 100 * (np.sum(values < value) + 0.5 * np.sum(values == value)) / len(values)
-            result[metric + "_discount_pct"] = 100 * (1 - value / np.median(values))
-    return result
-
-
-def process(client, symbol, args, end, start):
-    profiles = client.get("profile", symbol=symbol)
-    if not profiles:
-        raise ValueError("no_profile")
-    profile = profiles[0]
-    if profile.get("isEtf") or profile.get("isFund"):
-        raise ValueError("fund_not_company")
-    if profile.get("currency") != "USD":
-        raise ValueError("unsupported_quote_currency")
-    statements = [client.get(endpoint, symbol=symbol, period="quarter", limit=(args.years+3)*4)
-                  for endpoint in ("income-statement", "balance-sheet-statement", "cash-flow-statement")]
-    if any(not rows for rows in statements):
-        raise ValueError("missing_statements")
-    fundamentals = build_fundamentals(*statements)
-    if fundamentals.empty:
-        raise ValueError("no_valid_USD_TTM_windows_check_currency_quarters_and_filing_dates")
-    caps = []
-    # Annual chunks avoid silently receiving only a default short response.
-    cursor = start
-    while cursor <= end:
-        stop = min(cursor + pd.DateOffset(years=1) - pd.Timedelta(days=1), end)
-        records = client.get("historical-market-capitalization", symbol=symbol,
-                             **{"from": cursor.date().isoformat(), "to": stop.date().isoformat(), "limit": 1000})
-        caps.extend(records)
-        cursor = stop + pd.Timedelta(days=1)
-    if not caps:
-        raise ValueError("no_historical_market_caps")
-    caps = pd.DataFrame(caps)
-    if not {"date", "marketCap"}.issubset(caps.columns):
-        raise ValueError("market_cap_schema_mismatch")
-    caps["date"] = pd.to_datetime(caps.date, errors="coerce")
-    caps["marketCap"] = pd.to_numeric(caps.marketCap, errors="coerce")
-    caps = caps.dropna(subset=["date", "marketCap"]).drop_duplicates("date").sort_values("date")
-    caps = caps[(caps.date >= start) & (caps.date <= end) & (caps.marketCap > 0)]
-    if caps.empty:
-        raise ValueError("no_market_caps_in_requested_window")
-    financial = profile.get("sector") == "Financial Services"
-    freq = "M" if args.frequency == "monthly" else "Q"
-    periods = pd.period_range(start=start, end=end, freq=freq)
-    history = []
-    for period in periods:
-        target = period.end_time.normalize()
-        if target >= end:
-            continue  # only completed periods; latest snapshot kept separately
-        candidates = caps[(caps.date <= target) & (caps.date >= target - pd.Timedelta(days=7))]
-        if candidates.empty:
-            continue
-        c = candidates.iloc[-1]
-        row = value_on(c.date, c.marketCap, fundamentals, financial, args.max_age)
-        if row:
-            row["period_end"] = target.date().isoformat()
-            history.append(row)
-    latest = caps.iloc[-1]
-    current = value_on(latest.date, latest.marketCap, fundamentals, financial, args.max_age)
-    if current is None:
-        raise ValueError("no_available_financials_for_latest_market_cap")
-    summary = summarize(history, current, args.min_observations)
-    summary.update(sector=profile.get("sector"), industry=profile.get("industry"),
-                   market_cap_age_days=(end-latest.date).days,
-                   history_rows=len(history), expected_periods=sum(p.end_time.normalize() < end for p in periods))
-    # Stale market prices must not produce seemingly current percentile signals.
-    if summary["market_cap_age_days"] > 7:
-        for m in METRICS:
-            summary[m + "_percentile"] = np.nan
-            summary[m + "_discount_pct"] = np.nan
-    return history, current, summary
-
-
-def write_json(path, payload):
-    # pandas serialization converts NaN to JSON null and numpy scalars to numbers.
-    clean = json.loads(pd.Series([payload]).to_json(orient="values"))[0]
-    tmp = path.with_suffix(".tmp")
-    tmp.write_text(json.dumps(clean, separators=(",", ":"), allow_nan=False))
-    tmp.replace(path)
+def atomic_csv(rows, columns, path):
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temp = path.with_suffix(path.suffix + '.tmp')
+    pd.DataFrame(rows, columns=columns).to_csv(temp, index=False)
+    temp.replace(path)
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--universe", default="data/universe.csv")
-    parser.add_argument("--tickers", nargs="+")
-    parser.add_argument("--frequency", choices=["monthly", "quarterly"], default="monthly")
-    parser.add_argument("--years", type=int, default=5)
-    parser.add_argument("--min-observations", type=int, default=8)
-    parser.add_argument("--max-age", type=int, default=200, help="Maximum age of fiscal period in days")
-    parser.add_argument("--pause", type=float, default=0.3, help="Seconds between API requests; adapt to plan")
-    parser.add_argument("--cache-hours", type=float, default=24)
-    parser.add_argument("--output-dir", default="data")
-    parser.add_argument("--public", action="store_true", help="Also export to public/data; requires suitable data license")
+    parser.add_argument('--universe', default='data/universe.csv')
+    parser.add_argument('--tickers', nargs='+', help='Small test instead of universe CSV')
+    parser.add_argument('--output', default='data/stockanalysis_ratios.csv')
+    parser.add_argument('--status-output', default='data/stockanalysis_ratios_status.csv')
+    parser.add_argument('--sleep', type=float, default=3, help='Minimum seconds between requests (default 3 plus jitter)')
+    parser.add_argument('--cache-dir', default='data/stockanalysis_cache')
+    parser.add_argument('--cache-days', type=float, default=1)
+    parser.add_argument('--refresh', action='store_true')
     args = parser.parse_args()
-    if args.years < 1 or args.min_observations < 1 or args.pause < 0 or args.cache_hours < 0:
-        parser.error("years/min-observations must be positive; pause/cache-hours nonnegative")
-    key = os.environ.get("FMP_API_KEY", "").strip()
-    if not key:
-        parser.error("Set FMP_API_KEY environment variable before running")
-    if args.tickers:
-        universe = pd.DataFrame({"Ticker": args.tickers})
+    if args.sleep < 0 or args.cache_days < 0:
+        parser.error('sleep and cache-days must be nonnegative')
+    if Path(args.output).resolve() == Path(args.status_output).resolve():
+        parser.error('Output and status paths must differ')
+    universe = pd.DataFrame({'Ticker': args.tickers}) if args.tickers else pd.read_csv(args.universe, dtype=str)
+    if 'Ticker' not in universe:
+        parser.error('Universe requires a Ticker column')
+    universe = universe.dropna(subset=['Ticker']).copy()
+    universe['Ticker'] = universe.Ticker.str.strip().str.upper()
+    universe = universe[universe.Ticker != ''].drop_duplicates('Ticker')
+    records = universe.to_dict('records')
+    if not records:
+        parser.error('No tickers supplied')
+    fetcher = Fetcher(args)
+    rows, statuses = [], []
+    stopped = False
+    try:
+        for index, record in enumerate(records, 1):
+            ticker = record['Ticker']
+            status = {'Ticker': ticker, 'status': 'failed', 'quarters': 0, 'source_url': ''}
+            print(f'[{index}/{len(records)}] {ticker}', flush=True)
+            try:
+                url = source_url(ticker, record.get('StockAnalysisPath'))
+                status['source_url'] = url
+                html, fetched, cached, path = fetcher.get(url)
+                status['cache_used'] = cached
+                result, missing = parse_tables(html, ticker, url, fetched)
+                if not cached:
+                    temp = path.with_suffix('.tmp')
+                    temp.write_text(html, encoding='utf-8')
+                    temp.replace(path)
+                rows.extend(result)
+                history = [r for r in result if r['fiscal_quarter'] != 'Current']
+                blanks = sum(r[m] is None for r in result for m in METRICS)
+                status.update(status='ok' if len(history) == 20 and not blanks else 'partial',
+                              quarters=len(history), missing_metrics=';'.join(missing), missing_cells=blanks,
+                              message='' if all(r['period_end'] for r in result) else 'Some exact period dates unavailable')
+                print(f'  {len(history)} quarters + {len(result)-len(history)} Current row, {blanks} blank cells' + (' [cached]' if cached else ''), flush=True)
+            except StopRun as exc:
+                status.update(status='blocked', message=str(exc))
+                statuses.append(status)
+                stopped = True
+                print('  ' + str(exc), flush=True)
+                break
+            except (ValueError, RuntimeError, ImportError) as exc:
+                status['message'] = str(exc)
+                print('  Skipped: ' + str(exc), flush=True)
+            statuses.append(status)
+            if index % 10 == 0:
+                if rows:
+                    atomic_csv(rows, COLUMNS, args.output)
+                atomic_csv(statuses, STATUS_COLUMNS, args.status_output)
+    except KeyboardInterrupt:
+        stopped = True
+        print('\nInterrupted; saving completed tickers.', flush=True)
+    finally:
+        completed = {s['Ticker'] for s in statuses}
+        statuses.extend({'Ticker': r['Ticker'], 'status': 'not_attempted', 'message': 'Run stopped early'}
+                        for r in records if r['Ticker'] not in completed)
+        if rows:
+            atomic_csv(rows, COLUMNS, args.output)
+        atomic_csv(statuses, STATUS_COLUMNS, args.status_output)
+        fetcher.session.close()
+    successes = sum(s['status'] in ('ok', 'partial') for s in statuses)
+    print(f'Completed: {successes}/{len(records)} tickers; {len(rows)} rows including Current.')
+    print(f'Status: {args.status_output}')
+    if rows:
+        print(f'Data: {args.output} (this run only; check status for omissions)')
     else:
-        universe = pd.read_csv(args.universe, dtype=str)
-    if "Ticker" not in universe:
-        parser.error("Universe CSV must contain Ticker")
-    universe = universe.dropna(subset=["Ticker"]).copy()
-    universe["Ticker"] = universe.Ticker.str.strip().str.upper()
-    universe = universe[universe.Ticker != ""].drop_duplicates("Ticker")
-    end = pd.Timestamp.now(tz="America/New_York").normalize().tz_localize(None)
-    start = end - pd.DateOffset(years=args.years)
-    out = Path(args.output_dir)
-    out.mkdir(parents=True, exist_ok=True)
-    client = Client(key, out / "fmp_cache", args.pause, args.cache_hours)
-    histories, summaries, coverage, per_ticker = [], [], [], {}
-    for index, record in enumerate(universe.to_dict("records"), 1):
-        ticker = record["Ticker"]
-        override = record.get("FMP_Ticker")
-        symbol = str(override).strip() if pd.notna(override) and str(override).strip() else ticker.replace(".", "-")
-        print(f"[{index}/{len(universe)}] {ticker} ({symbol})", flush=True)
-        try:
-            history, current, summary = process(client, symbol, args, end, start)
-            histories.extend({"Ticker": ticker, **row} for row in history)
-            summaries.append({"Ticker": ticker, **summary})
-            per_ticker[ticker] = {"history": history, "current": current, "summary": summary}
-            coverage.append({"Ticker": ticker, "FMP_Ticker": symbol, "status": "ok",
-                             "history_rows": len(history), "expected_periods": summary["expected_periods"],
-                             "first_date": history[0]["date"] if history else None,
-                             "last_date": current["date"], "reason": ""})
-        except (APIError, ValueError, KeyError) as exc:
-            # Never include raw requests exceptions (their URLs can contain API keys).
-            reason = str(exc)
-            print(f"  Skipped: {reason}", flush=True)
-            coverage.append({"Ticker": ticker, "FMP_Ticker": symbol, "status": "skipped", "reason": reason})
-    coverage_frame = pd.DataFrame(coverage)
-    coverage_frame.to_csv(out / "valuation_coverage.csv", index=False)
-    if not summaries:
-        raise SystemExit("No usable tickers; see valuation_coverage.csv. Existing result files were not overwritten.")
-    payload = {"as_of": end.date().isoformat(), "start_date": start.date().isoformat(),
-               "frequency": args.frequency, "source": "FMP stable", "currency": "USD",
-               "method": "filing-lagged, latest/restated quarterly fundamentals; not vintage point-in-time",
-               "percentile": "0-100 midrank; lower means cheaper vs own valid historical observations",
-               "requested_tickers": len(universe), "successful_tickers": len(summaries),
-               "tickers": per_ticker}
-    destinations = [out] + ([Path("public/data")] if args.public else [])
-    for destination in destinations:
-        destination.mkdir(parents=True, exist_ok=True)
-        pd.DataFrame(histories).to_csv(destination / "valuation_history.csv", index=False)
-        pd.DataFrame(summaries).to_csv(destination / "valuation_summary.csv", index=False)
-        write_json(destination / "valuations.json", payload)
-    print(f"Saved {len(summaries)}/{len(universe)} tickers to {out}; inspect coverage before screening.")
+        print('No data written; any previous ratio CSV was left unchanged.')
+    return 2 if stopped or not successes else 0
 
 
-if __name__ == "__main__":
-    main()
+if __name__ == '__main__':
+    sys.exit(main())
