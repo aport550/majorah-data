@@ -10,10 +10,10 @@ Input: data/universe.csv, required column Ticker.
 Optional StockAnalysisPath column overrides the stock page, e.g. /stocks/brk-b/
 or /quote/tsx/SHOP/. Otherwise dots in tickers become hyphens in /stocks/{ticker}/.
 No API key. Requests are sequential with 3-4 seconds between requests by default.
-Successful pages are cached for 7 days; --refresh ignores the cache.
+Successful pages are cached for 1 day; --refresh ignores the cache.
 
 Output: data/stockanalysis_ratios.csv (one row per ticker/fiscal quarter).
-Current/TTM columns excluded. quarter_rank=1 means latest historical quarter.
+Current included as a separate row with quarter_rank=0; TTM columns excluded. quarter_rank=1 means latest historical quarter.
 Missing source values stay blank, including negative/zero values if supplied.
 No invented quarters for recent IPOs or incomplete source coverage.
 Coverage/errors: data/stockanalysis_ratios_status.csv.
@@ -116,9 +116,9 @@ def parse_tables(html, ticker, url, fetched):
             for col_index in range(1, len(table.columns)):
                 headers = parts(table.columns[col_index])
                 quarter = next((str(x).strip() for x in headers
-                                if re.fullmatch(r'Q[1-4]\s+\d{4}', str(x).strip())), None)
+                                if re.fullmatch(r'Q[1-4]\s+\d{4}', str(x).strip()) or str(x).strip() == 'Current'), None)
                 if quarter is None:
-                    continue  # excludes Current, TTM, annual columns, ads
+                    continue  # excludes TTM, annual columns, ads
                 candidates = headers + ([period_row.iloc[col_index]] if period_row is not None else [])
                 date = full_date(candidates)
                 record = by_quarter.setdefault(quarter, {
@@ -133,6 +133,7 @@ def parse_tables(html, ticker, url, fetched):
     if not by_quarter or not seen_metrics:
         raise ValueError('No expected quarterly ratio tables found; layout/access may have changed')
     # Fiscal year/quarter ordering works for non-calendar fiscal years too.
+    current = by_quarter.pop('Current', None)
     ordered = sorted(by_quarter.values(),
                      key=lambda r: (int(r['fiscal_quarter'].split()[1]), int(r['fiscal_quarter'][1])),
                      reverse=True)[:20]
@@ -140,6 +141,9 @@ def parse_tables(html, ticker, url, fetched):
         row['quarter_rank'] = rank
     if not any(r[m] is not None for r in ordered for m in METRICS):
         raise ValueError('Quarterly labels found but all nine metrics are missing')
+    if current is not None:
+        current['quarter_rank'] = 0
+        ordered.append(current)
     return ordered, sorted(set(METRICS) - seen_metrics)
 
 
@@ -240,7 +244,7 @@ def main():
     parser.add_argument('--status-output', default='data/stockanalysis_ratios_status.csv')
     parser.add_argument('--sleep', type=float, default=3, help='Minimum seconds between requests (default 3 plus jitter)')
     parser.add_argument('--cache-dir', default='data/stockanalysis_cache')
-    parser.add_argument('--cache-days', type=float, default=7)
+    parser.add_argument('--cache-days', type=float, default=1)
     parser.add_argument('--refresh', action='store_true')
     args = parser.parse_args()
     if args.sleep < 0 or args.cache_days < 0:
@@ -275,11 +279,12 @@ def main():
                     temp.write_text(html, encoding='utf-8')
                     temp.replace(path)
                 rows.extend(result)
+                history = [r for r in result if r['fiscal_quarter'] != 'Current']
                 blanks = sum(r[m] is None for r in result for m in METRICS)
-                status.update(status='ok' if len(result) == 20 and not blanks else 'partial',
-                              quarters=len(result), missing_metrics=';'.join(missing), missing_cells=blanks,
+                status.update(status='ok' if len(history) == 20 and not blanks else 'partial',
+                              quarters=len(history), missing_metrics=';'.join(missing), missing_cells=blanks,
                               message='' if all(r['period_end'] for r in result) else 'Some exact period dates unavailable')
-                print(f'  {len(result)} quarters, {blanks} blank cells' + (' [cached]' if cached else ''), flush=True)
+                print(f'  {len(history)} quarters + {len(result)-len(history)} Current row, {blanks} blank cells' + (' [cached]' if cached else ''), flush=True)
             except StopRun as exc:
                 status.update(status='blocked', message=str(exc))
                 statuses.append(status)
@@ -306,7 +311,7 @@ def main():
         atomic_csv(statuses, STATUS_COLUMNS, args.status_output)
         fetcher.session.close()
     successes = sum(s['status'] in ('ok', 'partial') for s in statuses)
-    print(f'Completed: {successes}/{len(records)} tickers; {len(rows)} historical rows.')
+    print(f'Completed: {successes}/{len(records)} tickers; {len(rows)} rows including Current.')
     print(f'Status: {args.status_output}')
     if rows:
         print(f'Data: {args.output} (this run only; check status for omissions)')
