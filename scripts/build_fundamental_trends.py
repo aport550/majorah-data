@@ -25,7 +25,7 @@ MARGIN_WEIGHTS = {
     "m03": 0.60,
 }
 
-REQUEST_SLEEP = 0.35
+REQUEST_SLEEP = 1.0
 
 
 def safe_num(x) -> Optional[float]:
@@ -400,6 +400,93 @@ def build_stock_object(ticker: str, rows: List[dict]) -> Tuple[dict, Optional[fl
     return stock_obj, tam_raw, op_raw, gross_raw, moat_raw
 
 
+# Dated history is separate from legacy R3/O3/G3 (same quarter last year).
+# Requires lxml for pandas.read_html. Only public HTML tables are parsed.
+def fetch_chart_history(symbol: str) -> Tuple[List[dict], Optional[str]]:
+    from urllib.request import Request, urlopen
+    from urllib.parse import quote
+    from io import StringIO
+    import re
+    import html as html_module
+
+    slug = quote(normalize_for_yahoo(symbol).lower(), safe="-")
+    url = f"https://stockanalysis.com/stocks/{slug}/financials/?p=quarterly"
+    request = Request(url, headers={"User-Agent": "Mozilla/5.0 (compatible; quarterly-financial-research)"})
+    with urlopen(request, timeout=30) as response:
+        html = response.read().decode("utf-8")
+    visible_text = html_module.unescape(re.sub(r"<[^>]+>", " ", html))
+    visible_text = re.sub(r"\s+", " ", visible_text)
+    units = re.search(r"(?:Financials in\s+)?(millions|billions|thousands)\s+([A-Z]{3})\b", visible_text, re.I)
+    if not units:
+        raise RuntimeError("Cannot verify quarterly table currency/units")
+    scale = {"millions": 1e6, "billions": 1e9, "thousands": 1e3}[units.group(1).lower()]
+    currency = units.group(2).upper()
+
+    def number(value):
+        text = str(value).strip().replace(",", "").replace("−", "-")
+        if text.startswith("(") and text.endswith(")"):
+            text = "-" + text[1:-1]
+        return safe_num(text)
+
+    for table in pd.read_html(StringIO(html)):
+        labels = table.iloc[:, 0].astype(str).str.strip()
+        revenue_matches = labels[labels.isin(["Revenue", "Revenue Revenue Growth"])].index
+        op_matches = labels[labels.isin(["Operating Income", "Operating Income Operating Income Growth"])].index
+        gross_matches = labels[labels.isin(["Gross Profit", "Gross Profit Gross Profit Growth"])].index
+        if not len(revenue_matches) or not len(op_matches):
+            continue
+        rows = []
+        for col_index, column in enumerate(table.columns[1:], start=1):
+            parts = list(column) if isinstance(column, tuple) else [column]
+            heading = " ".join(map(str, parts))
+            fiscal = re.search(r"\bQ([1-4])\s+(20\d{2})\b", heading)
+            # The rendered table includes the exact period end in its header.
+            ending = re.search(r"\b([A-Z][a-z]{2}\s+\d{1,2},\s+20\d{2})\b", heading)
+            if not fiscal or not ending:  # Never manufacture dates or use TTM.
+                continue
+            date = pd.to_datetime(ending.group(1), format="%b %d, %Y")
+            revenue = number(table.iloc[revenue_matches[0], col_index])
+            op = number(table.iloc[op_matches[0], col_index])
+            gross = number(table.iloc[gross_matches[0], col_index]) if len(gross_matches) else None
+            if revenue is None:
+                continue
+            rows.append({
+                "date": format_date(date),
+                "calendarYear": str(date.year),
+                "fiscalYear": fiscal.group(2),
+                "period": "Q" + fiscal.group(1),
+                "revenue": revenue * scale,
+                "operatingIncome": op * scale if op is not None else None,
+                "grossProfit": gross * scale if gross is not None else None,
+                "operatingMargin": op / revenue if op is not None and revenue else None,
+                "grossMargin": gross / revenue if gross is not None and revenue else None,
+            })
+        if rows:
+            rows = sorted({row["date"]: row for row in rows}.values(), key=lambda row: row["date"])
+            return rows[-12:], currency
+    raise RuntimeError("No usable dated quarterly revenue/operating income table")
+
+
+def attach_chart_history(stock_obj: dict, yahoo_rows: List[dict]):
+    try:
+        history, currency = fetch_chart_history(stock_obj["ticker"])
+        source = "stockanalysis.com"
+        error = None
+    except Exception as exc:
+        # Yahoo fallback is honest about its shorter history. Do not pad with zero.
+        history = [r for r in yahoo_rows if r.get("date") and r.get("revenue") is not None][-12:]
+        currency = None  # Do not infer financial reporting currency from listing currency.
+        source = "yfinance" if history else None
+        error = str(exc)
+    stock_obj["quarterlyHistory"] = history
+    stock_obj["quarterlyHistoryCurrency"] = currency
+    stock_obj["quarterlyHistorySource"] = source
+    stock_obj["quarterlyHistoryError"] = error
+    stock_obj["quarterlyHistoryCount"] = len(history)
+    stock_obj["quarterlyHistoryComplete"] = len(history) == 12
+    print(f"  Chart history: {len(history)}/12 quarters ({source or 'unavailable'})")
+
+
 def main():
     tickers = read_universe()
     print(f"Universe tickers: {len(tickers)}")
@@ -423,6 +510,7 @@ def main():
     for i, ticker in enumerate(tickers, start=1):
         print(f"[{i}/{len(tickers)}] {ticker}")
 
+        rows = []
         try:
             rows = extract_quarterly_rows(ticker)
             stock_obj, tam_raw, op_raw, gross_raw, moat_raw = build_stock_object(ticker, rows)
@@ -450,6 +538,7 @@ def main():
             gross_raw_map[ticker] = None
             moat_raw_map[ticker] = None
 
+        attach_chart_history(stock_obj, rows)
         payload["stocks"][ticker] = stock_obj
         time.sleep(REQUEST_SLEEP)
 
@@ -465,7 +554,7 @@ def main():
         stock_obj["moatScore"] = moat_pct.get(ticker)
 
     with open(OUTPUT_PATH, "w", encoding="utf-8") as f:
-        json.dump(payload, f, indent=2)
+        json.dump(payload, f, indent=2, allow_nan=False)
 
     print(f"Saved {OUTPUT_PATH} ({os.path.getsize(OUTPUT_PATH)} bytes)")
 
