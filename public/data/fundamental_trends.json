@@ -1,5 +1,5 @@
 {
-  "as_of": "2026-10-13",
+  "as_of": "2026-10-14",
   "source": "yfinance",
   "revenue_weights": {
     "r01": 0.25,
@@ -50892,17 +50892,6 @@
       "error": null,
       "quarterlyHistory": [
         {
-          "date": "2023-09-30",
-          "calendarYear": "2023",
-          "fiscalYear": "2023",
-          "period": "Q3",
-          "revenue": 11810000000.0,
-          "operatingIncome": 3715000000.0,
-          "grossProfit": null,
-          "operatingMargin": 0.3145639288738357,
-          "grossMargin": null
-        },
-        {
           "date": "2023-12-31",
           "calendarYear": "2023",
           "fiscalYear": "2023",
@@ -51021,6 +51010,17 @@
           "operatingIncome": 8535000000.0,
           "grossProfit": null,
           "operatingMargin": 0.4217730776833366,
+          "grossMargin": null
+        },
+        {
+          "date": "2026-09-30",
+          "calendarYear": "2026",
+          "fiscalYear": "2026",
+          "period": "Q3",
+          "revenue": 18311000000.0,
+          "operatingIncome": 7003000000.0,
+          "grossProfit": null,
+          "operatingMargin": 0.3824477090273606,
           "grossMargin": null
         }
       ],
@@ -63021,6 +63021,17 @@
       "error": null,
       "quarterlyHistory": [
         {
+          "date": "2023-10-01",
+          "calendarYear": "2023",
+          "fiscalYear": "2023",
+          "period": "Q3",
+          "revenue": 21351000000.0,
+          "operatingIncome": 6381000000.0,
+          "grossProfit": 14971000000.0,
+          "operatingMargin": 0.29886188000562036,
+          "grossMargin": 0.7011849562081401
+        },
+        {
           "date": "2023-12-31",
           "calendarYear": "2023",
           "fiscalYear": "2023",
@@ -63140,17 +63151,6 @@
           "grossProfit": 17294000000.0,
           "operatingMargin": 0.29190043461082577,
           "grossMargin": 0.6832872382457527
-        },
-        {
-          "date": "2026-09-27",
-          "calendarYear": "2026",
-          "fiscalYear": "2026",
-          "period": "Q3",
-          "revenue": 25399000000.0,
-          "operatingIncome": 6365000000.0,
-          "grossProfit": 17302000000.0,
-          "operatingMargin": 0.2506004173392653,
-          "grossMargin": 0.6812079215717154
         }
       ],
       "quarterlyHistoryCurrency": "USD",
@@ -127180,7 +127180,7 @@
       ],
       "quarterlyHistoryCurrency": null,
       "quarterlyHistorySource": "yfinance",
-      "quarterlyHistoryError": "HTTP Error 429: Too Many Requests",
+      "quarterlyHistoryError": "HTTP Error 404: Not Found",
       "quarterlyHistoryCount": 2,
       "quarterlyHistoryComplete": false
     },
@@ -127234,7 +127234,7 @@
       "quarterlyHistory": [],
       "quarterlyHistoryCurrency": null,
       "quarterlyHistorySource": null,
-      "quarterlyHistoryError": "HTTP Error 429: Too Many Requests",
+      "quarterlyHistoryError": "HTTP Error 404: Not Found",
       "quarterlyHistoryCount": 0,
       "quarterlyHistoryComplete": false
     },
@@ -127252,7 +127252,7 @@
       "quarterlyHistory": [],
       "quarterlyHistoryCurrency": null,
       "quarterlyHistorySource": null,
-      "quarterlyHistoryError": "HTTP Error 429: Too Many Requests",
+      "quarterlyHistoryError": "HTTP Error 404: Not Found",
       "quarterlyHistoryCount": 0,
       "quarterlyHistoryComplete": false
     },
@@ -127270,7 +127270,7 @@
       "quarterlyHistory": [],
       "quarterlyHistoryCurrency": null,
       "quarterlyHistorySource": null,
-      "quarterlyHistoryError": "HTTP Error 429: Too Many Requests",
+      "quarterlyHistoryError": "HTTP Error 404: Not Found",
       "quarterlyHistoryCount": 0,
       "quarterlyHistoryComplete": false
     },
@@ -127320,143 +127320,61 @@
       "error": null,
       "quarterlyHistory": [
         {
-          "date": "2023-09-30",
-          "calendarYear": "2023",
-          "fiscalYear": "2023",
-          "period": "Q3",
-          "revenue": 118930000.0,
-          "operatingIncome": -13050000.0,
-          "grossProfit": 46250000.0,
-          "operatingMargin": -0.10972841167073068,
-          "grossMargin": 0.3888842176069957
-        },
-        {
-          "date": "2023-12-31",
-          "calendarYear": "2023",
-          "fiscalYear": "2023",
-          "period": "Q4",
-          "revenue": 128150000.0,
-          "operatingIncome": -20530000.0,
-          "grossProfit": 48890000.0,
-          "operatingMargin": -0.16020288724151385,
-          "grossMargin": 0.3815060476004682
-        },
-        {
-          "date": "2024-03-31",
-          "calendarYear": "2024",
-          "fiscalYear": "2024",
-          "period": "Q1",
-          "revenue": 122690000.0,
-          "operatingIncome": -17860000.0,
-          "grossProfit": 47900000.0,
-          "operatingMargin": -0.14557013611541283,
-          "grossMargin": 0.3904148667373054
-        },
-        {
-          "date": "2024-06-30",
-          "calendarYear": "2024",
-          "fiscalYear": "2024",
-          "period": "Q2",
-          "revenue": 132600000.0,
-          "operatingIncome": -15290000.0,
-          "grossProfit": 52880000.0,
-          "operatingMargin": -0.11530920060331824,
-          "grossMargin": 0.3987933634992459
-        },
-        {
-          "date": "2024-09-30",
-          "calendarYear": "2024",
-          "fiscalYear": "2024",
-          "period": "Q3",
-          "revenue": 141700000.0,
-          "operatingIncome": -11480000.0,
-          "grossProfit": 55830000.0,
-          "operatingMargin": -0.08101623147494708,
-          "grossMargin": 0.3940014114326041
-        },
-        {
-          "date": "2024-12-31",
-          "calendarYear": "2024",
-          "fiscalYear": "2024",
-          "period": "Q4",
-          "revenue": 148550000.0,
-          "operatingIncome": -11300000.0,
-          "grossProfit": 59020000.0,
-          "operatingMargin": -0.07606866374957927,
-          "grossMargin": 0.39730730393806796
-        },
-        {
-          "date": "2025-03-31",
-          "calendarYear": "2025",
-          "fiscalYear": "2025",
-          "period": "Q1",
-          "revenue": 150970000.0,
-          "operatingIncome": -13930000.0,
-          "grossProfit": 56330000.0,
-          "operatingMargin": -0.09226998741471816,
-          "grossMargin": 0.3731204875140756
-        },
-        {
           "date": "2025-06-30",
           "calendarYear": "2025",
-          "fiscalYear": "2025",
           "period": "Q2",
-          "revenue": 162550000.0,
-          "operatingIncome": -10200000.0,
-          "grossProfit": 65180000.00000001,
-          "operatingMargin": -0.06274992310058443,
-          "grossMargin": 0.4009843125192249
+          "revenue": 162547000.0,
+          "operatingIncome": -10290000.0,
+          "grossProfit": 65176000.0,
+          "operatingMargin": -0.06330476723655312,
+          "grossMargin": 0.40096710489889076
         },
         {
           "date": "2025-09-30",
           "calendarYear": "2025",
-          "fiscalYear": "2025",
           "period": "Q3",
-          "revenue": 180720000.0,
-          "operatingIncome": -11100000.0,
-          "grossProfit": 72030000.0,
-          "operatingMargin": -0.06142098273572377,
-          "grossMargin": 0.39857237715803456
+          "revenue": 180715000.0,
+          "operatingIncome": -11010000.0,
+          "grossProfit": 72029000.0,
+          "operatingMargin": -0.060924660376836456,
+          "grossMargin": 0.3985778712337105
         },
         {
           "date": "2025-12-31",
           "calendarYear": "2025",
-          "fiscalYear": "2025",
           "period": "Q4",
-          "revenue": 192400000.0,
-          "operatingIncome": -8980000.0,
-          "grossProfit": 75240000.0,
-          "operatingMargin": -0.046673596673596676,
-          "grossMargin": 0.391060291060291
+          "revenue": 192397000.0,
+          "operatingIncome": -8776000.0,
+          "grossProfit": 75237000.0,
+          "operatingMargin": -0.04561401685057459,
+          "grossMargin": 0.3910507960103328
         },
         {
           "date": "2026-03-31",
           "calendarYear": "2026",
-          "fiscalYear": "2026",
           "period": "Q1",
-          "revenue": 205140000.0,
-          "operatingIncome": -5200000.0,
-          "grossProfit": 78490000.0,
-          "operatingMargin": -0.02534854245880862,
-          "grossMargin": 0.3826167495369016
+          "revenue": 205138000.0,
+          "operatingIncome": -5220000.0,
+          "grossProfit": 78488000.0,
+          "operatingMargin": -0.02544628493989412,
+          "grossMargin": 0.3826107303376264
         },
         {
           "date": "2026-06-30",
           "calendarYear": "2026",
-          "fiscalYear": "2026",
           "period": "Q2",
           "revenue": 229280000.0,
-          "operatingIncome": -5590000.0,
-          "grossProfit": 87150000.0,
-          "operatingMargin": -0.024380669923237962,
-          "grossMargin": 0.3801029309141661
+          "operatingIncome": -5545000.0,
+          "grossProfit": 87153000.0,
+          "operatingMargin": -0.02418440334961619,
+          "grossMargin": 0.3801160153524075
         }
       ],
-      "quarterlyHistoryCurrency": "USD",
-      "quarterlyHistorySource": "stockanalysis.com",
-      "quarterlyHistoryError": null,
-      "quarterlyHistoryCount": 12,
-      "quarterlyHistoryComplete": true
+      "quarterlyHistoryCurrency": null,
+      "quarterlyHistorySource": "yfinance",
+      "quarterlyHistoryError": "HTTP Error 429: Too Many Requests",
+      "quarterlyHistoryCount": 5,
+      "quarterlyHistoryComplete": false
     },
     "XOM": {
       "ticker": "XOM",
@@ -127992,143 +127910,61 @@
       "error": null,
       "quarterlyHistory": [
         {
-          "date": "2023-09-30",
-          "calendarYear": "2023",
-          "fiscalYear": "2023",
-          "period": "Q3",
-          "revenue": 2076000000.0,
-          "operatingIncome": 211000000.0,
-          "grossProfit": 764000000.0,
-          "operatingMargin": 0.10163776493256262,
-          "grossMargin": 0.36801541425818884
-        },
-        {
-          "date": "2023-12-31",
-          "calendarYear": "2023",
-          "fiscalYear": "2023",
-          "period": "Q4",
-          "revenue": 2118000000.0,
-          "operatingIncome": 365000000.0,
-          "grossProfit": 756000000.0,
-          "operatingMargin": 0.17233238904627007,
-          "grossMargin": 0.35694050991501414
-        },
-        {
-          "date": "2024-03-31",
-          "calendarYear": "2024",
-          "fiscalYear": "2024",
-          "period": "Q1",
-          "revenue": 2033000000.0,
-          "operatingIncome": 218000000.0,
-          "grossProfit": 752000000.0,
-          "operatingMargin": 0.10723069355632071,
-          "grossMargin": 0.36989670437776684
-        },
-        {
-          "date": "2024-06-30",
-          "calendarYear": "2024",
-          "fiscalYear": "2024",
-          "period": "Q2",
-          "revenue": 2169000000.0,
-          "operatingIncome": 275000000.0,
-          "grossProfit": 819000000.0,
-          "operatingMargin": 0.1267865375749193,
-          "grossMargin": 0.3775933609958506
-        },
-        {
-          "date": "2024-09-30",
-          "calendarYear": "2024",
-          "fiscalYear": "2024",
-          "period": "Q3",
-          "revenue": 2104000000.0,
-          "operatingIncome": 284000000.0,
-          "grossProfit": 784000000.0,
-          "operatingMargin": 0.13498098859315588,
-          "grossMargin": 0.3726235741444867
-        },
-        {
-          "date": "2024-12-31",
-          "calendarYear": "2024",
-          "fiscalYear": "2024",
-          "period": "Q4",
-          "revenue": 2256000000.0,
-          "operatingIncome": 290000000.0,
-          "grossProfit": 857000000.0,
-          "operatingMargin": 0.12854609929078015,
-          "grossMargin": 0.3798758865248227
-        },
-        {
-          "date": "2025-03-31",
-          "calendarYear": "2025",
-          "fiscalYear": "2025",
-          "period": "Q1",
-          "revenue": 2069000000.0,
-          "operatingIncome": 251000000.0,
-          "grossProfit": 768000000.0,
-          "operatingMargin": 0.12131464475592073,
-          "grossMargin": 0.3711938134364427
-        },
-        {
           "date": "2025-06-30",
           "calendarYear": "2025",
-          "fiscalYear": "2025",
           "period": "Q2",
           "revenue": 2301000000.0,
-          "operatingIncome": 330000000.0,
+          "operatingIncome": 331000000.0,
           "grossProfit": 892000000.0,
-          "operatingMargin": 0.14341590612777053,
+          "operatingMargin": 0.14385049978270317,
           "grossMargin": 0.3876575401999131
         },
         {
           "date": "2025-09-30",
           "calendarYear": "2025",
-          "fiscalYear": "2025",
           "period": "Q3",
           "revenue": 2268000000.0,
-          "operatingIncome": 355000000.0,
+          "operatingIncome": 357000000.0,
           "grossProfit": 883000000.0,
-          "operatingMargin": 0.15652557319223986,
+          "operatingMargin": 0.1574074074074074,
           "grossMargin": 0.38932980599647266
         },
         {
           "date": "2025-12-31",
           "calendarYear": "2025",
-          "fiscalYear": "2025",
           "period": "Q4",
           "revenue": 2397000000.0,
-          "operatingIncome": 383000000.0,
+          "operatingIncome": 386000000.0,
           "grossProfit": 932000000.0,
-          "operatingMargin": 0.15978306216103463,
+          "operatingMargin": 0.1610346266166041,
           "grossMargin": 0.38881935753024616
         },
         {
           "date": "2026-03-31",
           "calendarYear": "2026",
-          "fiscalYear": "2026",
           "period": "Q1",
           "revenue": 2125000000.0,
-          "operatingIncome": 274000000.0,
+          "operatingIncome": 275000000.0,
           "grossProfit": 803000000.0,
-          "operatingMargin": 0.12894117647058823,
+          "operatingMargin": 0.12941176470588237,
           "grossMargin": 0.37788235294117645
         },
         {
           "date": "2026-06-30",
           "calendarYear": "2026",
-          "fiscalYear": "2026",
           "period": "Q2",
           "revenue": 2336000000.0,
-          "operatingIncome": 397000000.0,
-          "grossProfit": 959000000.0,
-          "operatingMargin": 0.1699486301369863,
-          "grossMargin": 0.4105308219178082
+          "operatingIncome": 401000000.0,
+          "grossProfit": 963000000.0,
+          "operatingMargin": 0.1716609589041096,
+          "grossMargin": 0.4122431506849315
         }
       ],
-      "quarterlyHistoryCurrency": "USD",
-      "quarterlyHistorySource": "stockanalysis.com",
-      "quarterlyHistoryError": null,
-      "quarterlyHistoryCount": 12,
-      "quarterlyHistoryComplete": true
+      "quarterlyHistoryCurrency": null,
+      "quarterlyHistorySource": "yfinance",
+      "quarterlyHistoryError": "HTTP Error 429: Too Many Requests",
+      "quarterlyHistoryCount": 5,
+      "quarterlyHistoryComplete": false
     },
     "XYZ": {
       "ticker": "XYZ",
@@ -128176,143 +128012,61 @@
       "error": null,
       "quarterlyHistory": [
         {
-          "date": "2023-09-30",
-          "calendarYear": "2023",
-          "fiscalYear": "2023",
-          "period": "Q3",
-          "revenue": 5617000000.0,
-          "operatingIncome": 6090000.0,
-          "grossProfit": 1916000000.0,
-          "operatingMargin": 0.0010842086523055012,
-          "grossMargin": 0.3411073526793662
-        },
-        {
-          "date": "2023-12-31",
-          "calendarYear": "2023",
-          "fiscalYear": "2023",
-          "period": "Q4",
-          "revenue": 5773000000.0,
-          "operatingIncome": 23160000.0,
-          "grossProfit": 2044000000.0,
-          "operatingMargin": 0.004011778971072233,
-          "grossMargin": 0.354062012818292
-        },
-        {
-          "date": "2024-03-31",
-          "calendarYear": "2024",
-          "fiscalYear": "2024",
-          "period": "Q1",
-          "revenue": 5957000000.0,
-          "operatingIncome": 269440000.0,
-          "grossProfit": 2113000000.0,
-          "operatingMargin": 0.04523082088299479,
-          "grossMargin": 0.3547087460130938
-        },
-        {
-          "date": "2024-06-30",
-          "calendarYear": "2024",
-          "fiscalYear": "2024",
-          "period": "Q2",
-          "revenue": 6156000000.0,
-          "operatingIncome": 322660000.0,
-          "grossProfit": 2251000000.0,
-          "operatingMargin": 0.05241390513320338,
-          "grossMargin": 0.3656595191682911
-        },
-        {
-          "date": "2024-09-30",
-          "calendarYear": "2024",
-          "fiscalYear": "2024",
-          "period": "Q3",
-          "revenue": 5976000000.0,
-          "operatingIncome": 339410000.0,
-          "grossProfit": 2267000000.0,
-          "operatingMargin": 0.05679551539491299,
-          "grossMargin": 0.3793507362784471
-        },
-        {
-          "date": "2024-12-31",
-          "calendarYear": "2024",
-          "fiscalYear": "2024",
-          "period": "Q4",
-          "revenue": 6033000000.0,
-          "operatingIncome": 106220000.0,
-          "grossProfit": 2327000000.0,
-          "operatingMargin": 0.017606497596552296,
-          "grossMargin": 0.385711917785513
-        },
-        {
-          "date": "2025-03-31",
-          "calendarYear": "2025",
-          "fiscalYear": "2025",
-          "period": "Q1",
-          "revenue": 5772000000.0,
-          "operatingIncome": 344200000.0,
-          "grossProfit": 2304000000.0,
-          "operatingMargin": 0.059632709632709634,
-          "grossMargin": 0.3991683991683992
-        },
-        {
           "date": "2025-06-30",
           "calendarYear": "2025",
-          "fiscalYear": "2025",
           "period": "Q2",
-          "revenue": 6054000000.0,
-          "operatingIncome": 495190000.0,
-          "grossProfit": 2551000000.0,
-          "operatingMargin": 0.08179550710274198,
-          "grossMargin": 0.4213742979848034
+          "revenue": 6054457000.0,
+          "operatingIncome": 778383000.0,
+          "grossProfit": 2536530000.0,
+          "operatingMargin": 0.1285636350212744,
+          "grossMargin": 0.41895251712911663
         },
         {
           "date": "2025-09-30",
           "calendarYear": "2025",
-          "fiscalYear": "2025",
           "period": "Q3",
-          "revenue": 6115000000.0,
-          "operatingIncome": 420140000.0,
-          "grossProfit": 2675000000.0,
-          "operatingMargin": 0.06870645952575634,
-          "grossMargin": 0.437448896156991
+          "revenue": 6114952000.0,
+          "operatingIncome": 772895000.0,
+          "grossProfit": 2661570000.0,
+          "operatingMargin": 0.12639428731411137,
+          "grossMargin": 0.4352560739642764
         },
         {
           "date": "2025-12-31",
           "calendarYear": "2025",
-          "fiscalYear": "2025",
           "period": "Q4",
-          "revenue": 6252000000.0,
-          "operatingIncome": 498270000.0,
-          "grossProfit": 2886000000.0,
-          "operatingMargin": 0.07969769673704415,
-          "grossMargin": 0.4616122840690979
+          "revenue": 6252478000.0,
+          "operatingIncome": 995383000.0,
+          "grossProfit": 2872226000.0,
+          "operatingMargin": 0.15919816111308188,
+          "grossMargin": 0.45937402738562216
         },
         {
           "date": "2026-03-31",
           "calendarYear": "2026",
-          "fiscalYear": "2026",
           "period": "Q1",
-          "revenue": 6057000000.0,
-          "operatingIncome": -159390000.0,
-          "grossProfit": 2922000000.0,
-          "operatingMargin": -0.026315007429420504,
-          "grossMargin": 0.48241703813769193
+          "revenue": 6056847000.0,
+          "operatingIncome": 328135000.0,
+          "grossProfit": 2909239000.0,
+          "operatingMargin": 0.0541758773170265,
+          "grossMargin": 0.4803223525375497
         },
         {
           "date": "2026-06-30",
           "calendarYear": "2026",
-          "fiscalYear": "2026",
           "period": "Q2",
-          "revenue": 6618000000.0,
-          "operatingIncome": 463170000.0,
-          "grossProfit": 3179000000.0,
-          "operatingMargin": 0.06998640072529465,
-          "grossMargin": 0.4803566032033847
+          "revenue": 6617687000.0,
+          "operatingIncome": 1032320000.0,
+          "grossProfit": 3166081000.0,
+          "operatingMargin": 0.15599408071128176,
+          "grossMargin": 0.47842713020425415
         }
       ],
-      "quarterlyHistoryCurrency": "USD",
-      "quarterlyHistorySource": "stockanalysis.com",
-      "quarterlyHistoryError": null,
-      "quarterlyHistoryCount": 12,
-      "quarterlyHistoryComplete": true
+      "quarterlyHistoryCurrency": null,
+      "quarterlyHistorySource": "yfinance",
+      "quarterlyHistoryError": "HTTP Error 429: Too Many Requests",
+      "quarterlyHistoryCount": 5,
+      "quarterlyHistoryComplete": false
     },
     "YANG": {
       "ticker": "YANG",
@@ -128328,7 +128082,7 @@
       "quarterlyHistory": [],
       "quarterlyHistoryCurrency": null,
       "quarterlyHistorySource": null,
-      "quarterlyHistoryError": "HTTP Error 404: Not Found",
+      "quarterlyHistoryError": "HTTP Error 429: Too Many Requests",
       "quarterlyHistoryCount": 0,
       "quarterlyHistoryComplete": false
     },
@@ -128364,7 +128118,7 @@
       "quarterlyHistory": [],
       "quarterlyHistoryCurrency": null,
       "quarterlyHistorySource": null,
-      "quarterlyHistoryError": "HTTP Error 429: Too Many Requests",
+      "quarterlyHistoryError": "HTTP Error 404: Not Found",
       "quarterlyHistoryCount": 0,
       "quarterlyHistoryComplete": false
     },
@@ -128382,7 +128136,7 @@
       "quarterlyHistory": [],
       "quarterlyHistoryCurrency": null,
       "quarterlyHistorySource": null,
-      "quarterlyHistoryError": "HTTP Error 429: Too Many Requests",
+      "quarterlyHistoryError": "HTTP Error 404: Not Found",
       "quarterlyHistoryCount": 0,
       "quarterlyHistoryComplete": false
     },
@@ -128418,7 +128172,7 @@
       "quarterlyHistory": [],
       "quarterlyHistoryCurrency": null,
       "quarterlyHistorySource": null,
-      "quarterlyHistoryError": "HTTP Error 404: Not Found",
+      "quarterlyHistoryError": "HTTP Error 429: Too Many Requests",
       "quarterlyHistoryCount": 0,
       "quarterlyHistoryComplete": false
     },
@@ -128588,8 +128342,86 @@
       "error": null,
       "quarterlyHistory": [
         {
+          "date": "2023-09-30",
+          "calendarYear": "2023",
+          "fiscalYear": "2023",
+          "period": "Q3",
+          "revenue": 496000000.0,
+          "operatingIncome": -51000000.0,
+          "grossProfit": 386000000.0,
+          "operatingMargin": -0.1028225806451613,
+          "grossMargin": 0.7782258064516129
+        },
+        {
+          "date": "2023-12-31",
+          "calendarYear": "2023",
+          "fiscalYear": "2023",
+          "period": "Q4",
+          "revenue": 474000000.0,
+          "operatingIncome": -93000000.0,
+          "grossProfit": 359000000.0,
+          "operatingMargin": -0.1962025316455696,
+          "grossMargin": 0.7573839662447257
+        },
+        {
+          "date": "2024-03-31",
+          "calendarYear": "2024",
+          "fiscalYear": "2024",
+          "period": "Q1",
+          "revenue": 529000000.0,
+          "operatingIncome": -39000000.0,
+          "grossProfit": 406000000.0,
+          "operatingMargin": -0.07372400756143667,
+          "grossMargin": 0.7674858223062382
+        },
+        {
+          "date": "2024-06-30",
+          "calendarYear": "2024",
+          "fiscalYear": "2024",
+          "period": "Q2",
+          "revenue": 572000000.0,
+          "operatingIncome": -38000000.0,
+          "grossProfit": 442000000.0,
+          "operatingMargin": -0.06643356643356643,
+          "grossMargin": 0.7727272727272727
+        },
+        {
+          "date": "2024-09-30",
+          "calendarYear": "2024",
+          "fiscalYear": "2024",
+          "period": "Q3",
+          "revenue": 581000000.0,
+          "operatingIncome": -44000000.0,
+          "grossProfit": 441000000.0,
+          "operatingMargin": -0.0757314974182444,
+          "grossMargin": 0.7590361445783133
+        },
+        {
+          "date": "2024-12-31",
+          "calendarYear": "2024",
+          "fiscalYear": "2024",
+          "period": "Q4",
+          "revenue": 554000000.0,
+          "operatingIncome": -69000000.0,
+          "grossProfit": 420000000.0,
+          "operatingMargin": -0.12454873646209386,
+          "grossMargin": 0.7581227436823105
+        },
+        {
+          "date": "2025-03-31",
+          "calendarYear": "2025",
+          "fiscalYear": "2025",
+          "period": "Q1",
+          "revenue": 598000000.0,
+          "operatingIncome": -9000000.0,
+          "grossProfit": 459000000.0,
+          "operatingMargin": -0.015050167224080268,
+          "grossMargin": 0.7675585284280937
+        },
+        {
           "date": "2025-06-30",
           "calendarYear": "2025",
+          "fiscalYear": "2025",
           "period": "Q2",
           "revenue": 655000000.0,
           "operatingIncome": -11000000.0,
@@ -128600,6 +128432,7 @@
         {
           "date": "2025-09-30",
           "calendarYear": "2025",
+          "fiscalYear": "2025",
           "period": "Q3",
           "revenue": 676000000.0,
           "operatingIncome": -1000000.0,
@@ -128610,6 +128443,7 @@
         {
           "date": "2025-12-31",
           "calendarYear": "2025",
+          "fiscalYear": "2025",
           "period": "Q4",
           "revenue": 654000000.0,
           "operatingIncome": -11000000.0,
@@ -128620,6 +128454,7 @@
         {
           "date": "2026-03-31",
           "calendarYear": "2026",
+          "fiscalYear": "2026",
           "period": "Q1",
           "revenue": 708000000.0,
           "operatingIncome": 36000000.0,
@@ -128630,19 +128465,20 @@
         {
           "date": "2026-06-30",
           "calendarYear": "2026",
+          "fiscalYear": "2026",
           "period": "Q2",
           "revenue": 772000000.0,
-          "operatingIncome": 26000000.0,
+          "operatingIncome": 36000000.0,
           "grossProfit": 562000000.0,
-          "operatingMargin": 0.03367875647668394,
+          "operatingMargin": 0.046632124352331605,
           "grossMargin": 0.727979274611399
         }
       ],
-      "quarterlyHistoryCurrency": null,
-      "quarterlyHistorySource": "yfinance",
-      "quarterlyHistoryError": "HTTP Error 429: Too Many Requests",
-      "quarterlyHistoryCount": 5,
-      "quarterlyHistoryComplete": false
+      "quarterlyHistoryCurrency": "USD",
+      "quarterlyHistorySource": "stockanalysis.com",
+      "quarterlyHistoryError": null,
+      "quarterlyHistoryCount": 12,
+      "quarterlyHistoryComplete": true
     },
     "ZBRA": {
       "ticker": "ZBRA",
@@ -128792,143 +128628,61 @@
       "error": null,
       "quarterlyHistory": [
         {
-          "date": "2023-09-30",
-          "calendarYear": "2023",
-          "fiscalYear": "2023",
-          "period": "Q3",
-          "revenue": 188980000.0,
-          "operatingIncome": -37170000.0,
-          "grossProfit": 115500000.0,
-          "operatingMargin": -0.19668748015663035,
-          "grossMargin": 0.6111757857974389
-        },
-        {
-          "date": "2023-12-31",
-          "calendarYear": "2023",
-          "fiscalYear": "2023",
-          "period": "Q4",
-          "revenue": 210320000.0,
-          "operatingIncome": -31860000.0,
-          "grossProfit": 125710000.0,
-          "operatingMargin": -0.151483453784709,
-          "grossMargin": 0.5977082540890072
-        },
-        {
-          "date": "2024-03-31",
-          "calendarYear": "2024",
-          "fiscalYear": "2024",
-          "period": "Q1",
-          "revenue": 194950000.0,
-          "operatingIncome": -35870000.0,
-          "grossProfit": 118070000.0,
-          "operatingMargin": -0.18399589638368813,
-          "grossMargin": 0.605642472428828
-        },
-        {
-          "date": "2024-06-30",
-          "calendarYear": "2024",
-          "fiscalYear": "2024",
-          "period": "Q2",
-          "revenue": 227840000.0,
-          "operatingIncome": -26580000.0,
-          "grossProfit": 136760000.0,
-          "operatingMargin": -0.11666081460674156,
-          "grossMargin": 0.6002457865168539
-        },
-        {
-          "date": "2024-09-30",
-          "calendarYear": "2024",
-          "fiscalYear": "2024",
-          "period": "Q3",
-          "revenue": 268300000.0,
-          "operatingIncome": -7800000.0,
-          "grossProfit": 162640000.0,
-          "operatingMargin": -0.02907193440178904,
-          "grossMargin": 0.606187103988073
-        },
-        {
-          "date": "2024-12-31",
-          "calendarYear": "2024",
-          "fiscalYear": "2024",
-          "period": "Q4",
-          "revenue": 314670000.0,
-          "operatingIncome": 10570000.0,
-          "grossProfit": 188730000.0,
-          "operatingMargin": 0.033590745860743,
-          "grossMargin": 0.5997711888645246
-        },
-        {
-          "date": "2025-03-31",
-          "calendarYear": "2025",
-          "fiscalYear": "2025",
-          "period": "Q1",
-          "revenue": 264420000.00000003,
-          "operatingIncome": -12960000.0,
-          "grossProfit": 160930000.0,
-          "operatingMargin": -0.04901293396868618,
-          "grossMargin": 0.6086150820664095
-        },
-        {
           "date": "2025-06-30",
           "calendarYear": "2025",
-          "fiscalYear": "2025",
           "period": "Q2",
-          "revenue": 308440000.0,
-          "operatingIncome": -5110000.0,
-          "grossProfit": 191450000.0,
-          "operatingMargin": -0.01656724160290494,
-          "grossMargin": 0.6207041888211645
+          "revenue": 308442000.0,
+          "operatingIncome": -5105000.0,
+          "grossProfit": 191454000.0,
+          "operatingMargin": -0.01655092367446716,
+          "grossMargin": 0.6207131324527788
         },
         {
           "date": "2025-09-30",
           "calendarYear": "2025",
-          "fiscalYear": "2025",
           "period": "Q3",
-          "revenue": 337170000.0,
-          "operatingIncome": 15230000.0,
-          "grossProfit": 203950000.0,
-          "operatingMargin": 0.04517009223833674,
-          "grossMargin": 0.6048877420885606
+          "revenue": 337169000.0,
+          "operatingIncome": 15234000.0,
+          "grossProfit": 203945000.0,
+          "operatingMargin": 0.04518208969389238,
+          "grossMargin": 0.6048747067494342
         },
         {
           "date": "2025-12-31",
           "calendarYear": "2025",
-          "fiscalYear": "2025",
           "period": "Q4",
-          "revenue": 394640000.0,
-          "operatingIncome": 31640000.0,
-          "grossProfit": 234750000.0,
-          "operatingMargin": 0.0801743361037908,
-          "grossMargin": 0.5948459355361849
+          "revenue": 394638000.0,
+          "operatingIncome": 31637000.0,
+          "grossProfit": 234751000.0,
+          "operatingMargin": 0.08016714051865254,
+          "grossMargin": 0.5948514841449632
         },
         {
           "date": "2026-03-31",
           "calendarYear": "2026",
-          "fiscalYear": "2026",
           "period": "Q1",
-          "revenue": 396300000.0,
-          "operatingIncome": -10420000.0,
-          "grossProfit": 233860000.0,
-          "operatingMargin": -0.02629321221296997,
-          "grossMargin": 0.5901085036588444
+          "revenue": 396304000.0,
+          "operatingIncome": -10421000.0,
+          "grossProfit": 233858000.0,
+          "operatingMargin": -0.026295470144131777,
+          "grossMargin": 0.5900975009083935
         },
         {
           "date": "2026-06-30",
           "calendarYear": "2026",
-          "fiscalYear": "2026",
           "period": "Q2",
-          "revenue": 442770000.0,
-          "operatingIncome": 16920000.0,
-          "grossProfit": 261769999.99999997,
-          "operatingMargin": 0.038213971136255846,
-          "grossMargin": 0.5912098832350882
+          "revenue": 442766000.0,
+          "operatingIncome": 16924000.0,
+          "grossProfit": 261769000.0,
+          "operatingMargin": 0.038223350483099425,
+          "grossMargin": 0.5912129657652123
         }
       ],
-      "quarterlyHistoryCurrency": "USD",
-      "quarterlyHistorySource": "stockanalysis.com",
-      "quarterlyHistoryError": null,
-      "quarterlyHistoryCount": 12,
-      "quarterlyHistoryComplete": true
+      "quarterlyHistoryCurrency": null,
+      "quarterlyHistorySource": "yfinance",
+      "quarterlyHistoryError": "HTTP Error 429: Too Many Requests",
+      "quarterlyHistoryCount": 5,
+      "quarterlyHistoryComplete": false
     },
     "ZLAB": {
       "ticker": "ZLAB",
@@ -129528,143 +129282,61 @@
       "error": null,
       "quarterlyHistory": [
         {
-          "date": "2023-09-30",
-          "calendarYear": "2023",
-          "fiscalYear": "2023",
-          "period": "Q3",
-          "revenue": 2151000000.0,
-          "operatingIncome": 798000000.0,
-          "grossProfit": 1513000000.0,
-          "operatingMargin": 0.37099023709902373,
-          "grossMargin": 0.703393770339377
-        },
-        {
-          "date": "2023-12-31",
-          "calendarYear": "2023",
-          "fiscalYear": "2023",
-          "period": "Q4",
-          "revenue": 2213000000.0,
-          "operatingIncome": 712000000.0,
-          "grossProfit": 1488000000.0,
-          "operatingMargin": 0.32173520108450065,
-          "grossMargin": 0.6723904202440126
-        },
-        {
-          "date": "2024-03-31",
-          "calendarYear": "2024",
-          "fiscalYear": "2024",
-          "period": "Q1",
-          "revenue": 2190000000.0,
-          "operatingIncome": 801000000.0,
-          "grossProfit": 1547000000.0,
-          "operatingMargin": 0.36575342465753424,
-          "grossMargin": 0.7063926940639269
-        },
-        {
-          "date": "2024-06-30",
-          "calendarYear": "2024",
-          "fiscalYear": "2024",
-          "period": "Q2",
-          "revenue": 2361000000.0,
-          "operatingIncome": 906000000.0,
-          "grossProfit": 1693000000.0,
-          "operatingMargin": 0.38373570520965694,
-          "grossMargin": 0.7170690385429903
-        },
-        {
-          "date": "2024-09-30",
-          "calendarYear": "2024",
-          "fiscalYear": "2024",
-          "period": "Q3",
-          "revenue": 2388000000.0,
-          "operatingIncome": 920000000.0,
-          "grossProfit": 1687000000.0,
-          "operatingMargin": 0.3852596314907873,
-          "grossMargin": 0.7064489112227805
-        },
-        {
-          "date": "2024-12-31",
-          "calendarYear": "2024",
-          "fiscalYear": "2024",
-          "period": "Q4",
-          "revenue": 2317000000.0,
-          "operatingIncome": 772000000.0,
-          "grossProfit": 1611000000.0,
-          "operatingMargin": 0.3331894691411308,
-          "grossMargin": 0.6952956409149763
-        },
-        {
-          "date": "2025-03-31",
-          "calendarYear": "2025",
-          "fiscalYear": "2025",
-          "period": "Q1",
-          "revenue": 2198000000.0,
-          "operatingIncome": 819000000.0,
-          "grossProfit": 1581000000.0,
-          "operatingMargin": 0.37261146496815284,
-          "grossMargin": 0.7192902638762512
-        },
-        {
           "date": "2025-06-30",
           "calendarYear": "2025",
-          "fiscalYear": "2025",
           "period": "Q2",
           "revenue": 2474000000.0,
-          "operatingIncome": 1008000000.0,
-          "grossProfit": 1812000000.0,
-          "operatingMargin": 0.4074373484236055,
-          "grossMargin": 0.7324171382376717
+          "operatingIncome": 997000000.0,
+          "grossProfit": 1810000000.0,
+          "operatingMargin": 0.4029911075181892,
+          "grossMargin": 0.7316087308003234
         },
         {
           "date": "2025-09-30",
           "calendarYear": "2025",
-          "fiscalYear": "2025",
           "period": "Q3",
           "revenue": 2400000000.0,
-          "operatingIncome": 944000000.0,
-          "grossProfit": 1718000000.0,
-          "operatingMargin": 0.3933333333333333,
-          "grossMargin": 0.7158333333333333
+          "operatingIncome": 936000000.0,
+          "grossProfit": 1717000000.0,
+          "operatingMargin": 0.39,
+          "grossMargin": 0.7154166666666667
         },
         {
           "date": "2025-12-31",
           "calendarYear": "2025",
-          "fiscalYear": "2025",
           "period": "Q4",
           "revenue": 2387000000.0,
-          "operatingIncome": 828000000.0,
-          "grossProfit": 1676000000.0,
-          "operatingMargin": 0.34687892752408883,
-          "grossMargin": 0.702136573104315
+          "operatingIncome": 826000000.0,
+          "grossProfit": 1675000000.0,
+          "operatingMargin": 0.3460410557184751,
+          "grossMargin": 0.7017176372015081
         },
         {
           "date": "2026-03-31",
           "calendarYear": "2026",
-          "fiscalYear": "2026",
           "period": "Q1",
           "revenue": 2262000000.0,
-          "operatingIncome": 827000000.0,
-          "grossProfit": 1622000000.0,
-          "operatingMargin": 0.365605658709107,
-          "grossMargin": 0.7170645446507515
+          "operatingIncome": 822000000.0,
+          "grossProfit": 1621000000.0,
+          "operatingMargin": 0.363395225464191,
+          "grossMargin": 0.7166224580017684
         },
         {
           "date": "2026-06-30",
           "calendarYear": "2026",
-          "fiscalYear": "2026",
           "period": "Q2",
           "revenue": 2468000000.0,
-          "operatingIncome": 1005000000.0,
-          "grossProfit": 1798000000.0,
-          "operatingMargin": 0.4072123176661264,
-          "grossMargin": 0.7285251215559158
+          "operatingIncome": 999000000.0,
+          "grossProfit": 1795000000.0,
+          "operatingMargin": 0.40478119935170176,
+          "grossMargin": 0.7273095623987034
         }
       ],
-      "quarterlyHistoryCurrency": "USD",
-      "quarterlyHistorySource": "stockanalysis.com",
-      "quarterlyHistoryError": null,
-      "quarterlyHistoryCount": 12,
-      "quarterlyHistoryComplete": true
+      "quarterlyHistoryCurrency": null,
+      "quarterlyHistorySource": "yfinance",
+      "quarterlyHistoryError": "HTTP Error 429: Too Many Requests",
+      "quarterlyHistoryCount": 5,
+      "quarterlyHistoryComplete": false
     },
     "RYN": {
       "ticker": "RYN",
@@ -129764,7 +129436,7 @@
       ],
       "quarterlyHistoryCurrency": null,
       "quarterlyHistorySource": "yfinance",
-      "quarterlyHistoryError": "No usable dated quarterly revenue/operating income table",
+      "quarterlyHistoryError": "HTTP Error 429: Too Many Requests",
       "quarterlyHistoryCount": 5,
       "quarterlyHistoryComplete": false
     },
@@ -129866,7 +129538,7 @@
       ],
       "quarterlyHistoryCurrency": null,
       "quarterlyHistorySource": "yfinance",
-      "quarterlyHistoryError": "No usable dated quarterly revenue/operating income table",
+      "quarterlyHistoryError": "HTTP Error 429: Too Many Requests",
       "quarterlyHistoryCount": 5,
       "quarterlyHistoryComplete": false
     },
@@ -129916,97 +129588,18 @@
       "error": null,
       "quarterlyHistory": [
         {
-          "date": "2023-09-30",
-          "calendarYear": "2023",
-          "fiscalYear": "2023",
-          "period": "Q3",
-          "revenue": 728000000.0,
-          "operatingIncome": 159000000.0,
-          "grossProfit": 214000000.0,
-          "operatingMargin": 0.2184065934065934,
-          "grossMargin": 0.29395604395604397
-        },
-        {
-          "date": "2023-12-31",
-          "calendarYear": "2023",
-          "fiscalYear": "2023",
-          "period": "Q4",
-          "revenue": 658000000.0,
-          "operatingIncome": 91000000.0,
-          "grossProfit": 160000000.0,
-          "operatingMargin": 0.13829787234042554,
-          "grossMargin": 0.24316109422492402
-        },
-        {
-          "date": "2024-03-31",
-          "calendarYear": "2024",
-          "fiscalYear": "2024",
-          "period": "Q1",
-          "revenue": 724000000.0,
-          "operatingIncome": 144000000.0,
-          "grossProfit": 213000000.0,
-          "operatingMargin": 0.19889502762430938,
-          "grossMargin": 0.2941988950276243
-        },
-        {
-          "date": "2024-06-30",
-          "calendarYear": "2024",
-          "fiscalYear": "2024",
-          "period": "Q2",
-          "revenue": 814000000.0,
-          "operatingIncome": 195000000.0,
-          "grossProfit": 263000000.0,
-          "operatingMargin": 0.23955773955773957,
-          "grossMargin": 0.3230958230958231
-        },
-        {
-          "date": "2024-09-30",
-          "calendarYear": "2024",
-          "fiscalYear": "2024",
-          "period": "Q3",
-          "revenue": 722000000.0,
-          "operatingIncome": 117000000.0,
-          "grossProfit": 192000000.0,
-          "operatingMargin": 0.16204986149584488,
-          "grossMargin": 0.2659279778393352
-        },
-        {
-          "date": "2024-12-31",
-          "calendarYear": "2024",
-          "fiscalYear": "2024",
-          "period": "Q4",
-          "revenue": 680000000.0,
-          "operatingIncome": 79000000.0,
-          "grossProfit": 161000000.0,
-          "operatingMargin": 0.1161764705882353,
-          "grossMargin": 0.23676470588235293
-        },
-        {
-          "date": "2025-03-31",
-          "calendarYear": "2025",
-          "fiscalYear": "2025",
-          "period": "Q1",
-          "revenue": 724000000.0,
-          "operatingIncome": 123000000.0,
-          "grossProfit": 198000000.0,
-          "operatingMargin": 0.16988950276243095,
-          "grossMargin": 0.27348066298342544
-        },
-        {
           "date": "2025-06-30",
           "calendarYear": "2025",
-          "fiscalYear": "2025",
           "period": "Q2",
           "revenue": 755000000.0,
-          "operatingIncome": 100000000.0,
+          "operatingIncome": 101000000.0,
           "grossProfit": 178000000.0,
-          "operatingMargin": 0.13245033112582782,
+          "operatingMargin": 0.1337748344370861,
           "grossMargin": 0.23576158940397351
         },
         {
           "date": "2025-09-30",
           "calendarYear": "2025",
-          "fiscalYear": "2025",
           "period": "Q3",
           "revenue": 663000000.0,
           "operatingIncome": 33000000.0,
@@ -130017,18 +129610,16 @@
         {
           "date": "2025-12-31",
           "calendarYear": "2025",
-          "fiscalYear": "2025",
           "period": "Q4",
           "revenue": 567000000.0,
-          "operatingIncome": 7000000.0,
+          "operatingIncome": 4000000.0,
           "grossProfit": 85000000.0,
-          "operatingMargin": 0.012345679012345678,
+          "operatingMargin": 0.007054673721340388,
           "grossMargin": 0.14991181657848324
         },
         {
           "date": "2026-03-31",
           "calendarYear": "2026",
-          "fiscalYear": "2026",
           "period": "Q1",
           "revenue": 574000000.0,
           "operatingIncome": 38000000.0,
@@ -130039,20 +129630,19 @@
         {
           "date": "2026-06-30",
           "calendarYear": "2026",
-          "fiscalYear": "2026",
           "period": "Q2",
           "revenue": 664000000.0,
-          "operatingIncome": 35000000.0,
-          "grossProfit": 115000000.0,
-          "operatingMargin": 0.05271084337349398,
-          "grossMargin": 0.17319277108433734
+          "operatingIncome": 36000000.0,
+          "grossProfit": 116000000.0,
+          "operatingMargin": 0.05421686746987952,
+          "grossMargin": 0.1746987951807229
         }
       ],
-      "quarterlyHistoryCurrency": "USD",
-      "quarterlyHistorySource": "stockanalysis.com",
-      "quarterlyHistoryError": null,
-      "quarterlyHistoryCount": 12,
-      "quarterlyHistoryComplete": true
+      "quarterlyHistoryCurrency": null,
+      "quarterlyHistorySource": "yfinance",
+      "quarterlyHistoryError": "HTTP Error 429: Too Many Requests",
+      "quarterlyHistoryCount": 5,
+      "quarterlyHistoryComplete": false
     },
     "WFG": {
       "ticker": "WFG",
@@ -139109,7 +138699,7 @@
       "quarterlyHistory": [],
       "quarterlyHistoryCurrency": null,
       "quarterlyHistorySource": null,
-      "quarterlyHistoryError": "HTTP Error 429: Too Many Requests",
+      "quarterlyHistoryError": "HTTP Error 404: Not Found",
       "quarterlyHistoryCount": 0,
       "quarterlyHistoryComplete": false
     },
@@ -139163,7 +138753,7 @@
       "quarterlyHistory": [],
       "quarterlyHistoryCurrency": null,
       "quarterlyHistorySource": null,
-      "quarterlyHistoryError": "HTTP Error 429: Too Many Requests",
+      "quarterlyHistoryError": "HTTP Error 404: Not Found",
       "quarterlyHistoryCount": 0,
       "quarterlyHistoryComplete": false
     },
@@ -139181,7 +138771,7 @@
       "quarterlyHistory": [],
       "quarterlyHistoryCurrency": null,
       "quarterlyHistorySource": null,
-      "quarterlyHistoryError": "HTTP Error 429: Too Many Requests",
+      "quarterlyHistoryError": "HTTP Error 404: Not Found",
       "quarterlyHistoryCount": 0,
       "quarterlyHistoryComplete": false
     },
@@ -139217,7 +138807,7 @@
       "quarterlyHistory": [],
       "quarterlyHistoryCurrency": null,
       "quarterlyHistorySource": null,
-      "quarterlyHistoryError": "HTTP Error 404: Not Found",
+      "quarterlyHistoryError": "HTTP Error 429: Too Many Requests",
       "quarterlyHistoryCount": 0,
       "quarterlyHistoryComplete": false
     },
@@ -139235,7 +138825,7 @@
       "quarterlyHistory": [],
       "quarterlyHistoryCurrency": null,
       "quarterlyHistorySource": null,
-      "quarterlyHistoryError": "HTTP Error 404: Not Found",
+      "quarterlyHistoryError": "HTTP Error 429: Too Many Requests",
       "quarterlyHistoryCount": 0,
       "quarterlyHistoryComplete": false
     },
@@ -139585,61 +139175,143 @@
       "error": null,
       "quarterlyHistory": [
         {
+          "date": "2023-09-30",
+          "calendarYear": "2023",
+          "fiscalYear": "2023",
+          "period": "Q3",
+          "revenue": 1406000000.0,
+          "operatingIncome": 79000000.0,
+          "grossProfit": 391000000.0,
+          "operatingMargin": 0.0561877667140825,
+          "grossMargin": 0.27809388335704127
+        },
+        {
+          "date": "2023-12-31",
+          "calendarYear": "2023",
+          "fiscalYear": "2023",
+          "period": "Q4",
+          "revenue": 1276000000.0,
+          "operatingIncome": 589000000.0,
+          "grossProfit": 478000000.0,
+          "operatingMargin": 0.4615987460815047,
+          "grossMargin": 0.37460815047021945
+        },
+        {
+          "date": "2024-03-31",
+          "calendarYear": "2024",
+          "fiscalYear": "2024",
+          "period": "Q1",
+          "revenue": 901000000.0,
+          "operatingIncome": 35000000.0,
+          "grossProfit": 317000000.0,
+          "operatingMargin": 0.038845726970033294,
+          "grossMargin": 0.3518312985571587
+        },
+        {
+          "date": "2024-06-30",
+          "calendarYear": "2024",
+          "fiscalYear": "2024",
+          "period": "Q2",
+          "revenue": 514000000.0,
+          "operatingIncome": -258000000.0,
+          "grossProfit": 152000000.0,
+          "operatingMargin": -0.5019455252918288,
+          "grossMargin": 0.29571984435797666
+        },
+        {
+          "date": "2024-09-30",
+          "calendarYear": "2024",
+          "fiscalYear": "2024",
+          "period": "Q3",
+          "revenue": 600000000.0,
+          "operatingIncome": -140000000.0,
+          "grossProfit": 195000000.0,
+          "operatingMargin": -0.23333333333333334,
+          "grossMargin": 0.325
+        },
+        {
+          "date": "2024-12-31",
+          "calendarYear": "2024",
+          "fiscalYear": "2024",
+          "period": "Q4",
+          "revenue": 2244000000.0,
+          "operatingIncome": -119000000.0,
+          "grossProfit": 837000000.0,
+          "operatingMargin": -0.05303030303030303,
+          "grossMargin": 0.3729946524064171
+        },
+        {
+          "date": "2025-03-31",
+          "calendarYear": "2025",
+          "fiscalYear": "2025",
+          "period": "Q1",
+          "revenue": 3210000000.0,
+          "operatingIncome": -268000000.0,
+          "grossProfit": 1533000000.0,
+          "operatingMargin": -0.08348909657320873,
+          "grossMargin": 0.47757009345794393
+        },
+        {
           "date": "2025-06-30",
           "calendarYear": "2025",
+          "fiscalYear": "2025",
           "period": "Q2",
-          "revenue": 3686000000.0,
-          "operatingIncome": 1314000000.0,
-          "grossProfit": 1412000000.0,
-          "operatingMargin": 0.3564839934888768,
-          "grossMargin": 0.3830710797612588
+          "revenue": 2809000000.0,
+          "operatingIncome": 1290000000.0,
+          "grossProfit": 1255000000.0,
+          "operatingMargin": 0.4592381630473478,
+          "grossMargin": 0.4467782128871485
         },
         {
           "date": "2025-09-30",
           "calendarYear": "2025",
+          "fiscalYear": "2025",
           "period": "Q3",
-          "revenue": 2967000000.0,
-          "operatingIncome": 779000000.0,
-          "grossProfit": 1449000000.0,
-          "operatingMargin": 0.2625547691270644,
-          "grossMargin": 0.4883720930232558
+          "revenue": 2516000000.0,
+          "operatingIncome": 731000000.0,
+          "grossProfit": 1032000000.0,
+          "operatingMargin": 0.2905405405405405,
+          "grossMargin": 0.41017488076311603
         },
         {
           "date": "2025-12-31",
           "calendarYear": "2025",
+          "fiscalYear": "2025",
           "period": "Q4",
-          "revenue": 3340000000.0,
-          "operatingIncome": 898000000.0,
-          "grossProfit": 1771000000.0,
-          "operatingMargin": 0.2688622754491018,
-          "grossMargin": 0.5302395209580838
+          "revenue": 3104000000.0,
+          "operatingIncome": 854000000.0,
+          "grossProfit": 1455000000.0,
+          "operatingMargin": 0.27512886597938147,
+          "grossMargin": 0.46875
         },
         {
           "date": "2026-03-31",
           "calendarYear": "2026",
+          "fiscalYear": "2026",
           "period": "Q1",
-          "revenue": 4398000000.0,
-          "operatingIncome": 1601000000.0,
-          "grossProfit": 2812000000.0,
-          "operatingMargin": 0.36402910413824463,
-          "grossMargin": 0.639381537062301
+          "revenue": 4527000000.0,
+          "operatingIncome": 1541000000.0,
+          "grossProfit": 2471000000.0,
+          "operatingMargin": 0.3404020322509388,
+          "grossMargin": 0.5458360945438481
         },
         {
           "date": "2026-06-30",
           "calendarYear": "2026",
+          "fiscalYear": "2026",
           "period": "Q2",
-          "revenue": 2960000000.0,
-          "operatingIncome": 721000000.0,
-          "grossProfit": 787000000.0,
-          "operatingMargin": 0.2435810810810811,
-          "grossMargin": 0.26587837837837835
+          "revenue": 2511000000.0,
+          "operatingIncome": 661000000.0,
+          "grossProfit": 1000000000.0,
+          "operatingMargin": 0.2632417363600159,
+          "grossMargin": 0.39824771007566706
         }
       ],
-      "quarterlyHistoryCurrency": null,
-      "quarterlyHistorySource": "yfinance",
-      "quarterlyHistoryError": "HTTP Error 429: Too Many Requests",
-      "quarterlyHistoryCount": 5,
-      "quarterlyHistoryComplete": false
+      "quarterlyHistoryCurrency": "USD",
+      "quarterlyHistorySource": "stockanalysis.com",
+      "quarterlyHistoryError": null,
+      "quarterlyHistoryCount": 12,
+      "quarterlyHistoryComplete": true
     },
     "AR": {
       "ticker": "AR",
@@ -139687,61 +139359,143 @@
       "error": null,
       "quarterlyHistory": [
         {
+          "date": "2023-09-30",
+          "calendarYear": "2023",
+          "fiscalYear": "2023",
+          "period": "Q3",
+          "revenue": 1115000000.0,
+          "operatingIncome": 68960000.0,
+          "grossProfit": 725880000.0,
+          "operatingMargin": 0.06184753363228699,
+          "grossMargin": 0.6510134529147982
+        },
+        {
+          "date": "2023-12-31",
+          "calendarYear": "2023",
+          "fiscalYear": "2023",
+          "period": "Q4",
+          "revenue": 1158000000.0,
+          "operatingIncome": 107140000.0,
+          "grossProfit": 777340000.0,
+          "operatingMargin": 0.09252158894645941,
+          "grossMargin": 0.6712780656303973
+        },
+        {
+          "date": "2024-03-31",
+          "calendarYear": "2024",
+          "fiscalYear": "2024",
+          "period": "Q1",
+          "revenue": 1106000000.0,
+          "operatingIncome": 49970000.0,
+          "grossProfit": 708790000.0,
+          "operatingMargin": 0.045180831826401445,
+          "grossMargin": 0.6408589511754068
+        },
+        {
+          "date": "2024-06-30",
+          "calendarYear": "2024",
+          "fiscalYear": "2024",
+          "period": "Q2",
+          "revenue": 977500000.0,
+          "operatingIncome": -77100000.0,
+          "grossProfit": 597510000.0,
+          "operatingMargin": -0.07887468030690536,
+          "grossMargin": 0.6112634271099744
+        },
+        {
+          "date": "2024-09-30",
+          "calendarYear": "2024",
+          "fiscalYear": "2024",
+          "period": "Q3",
+          "revenue": 1031000000.0,
+          "operatingIncome": -27790000.0,
+          "grossProfit": 641730000.0,
+          "operatingMargin": -0.026954413191076623,
+          "grossMargin": 0.6224345295829292
+        },
+        {
+          "date": "2024-12-31",
+          "calendarYear": "2024",
+          "fiscalYear": "2024",
+          "period": "Q4",
+          "revenue": 1183000000.0,
+          "operatingIncome": 60710000.0,
+          "grossProfit": 797660000.0,
+          "operatingMargin": 0.05131868131868132,
+          "grossMargin": 0.6742688081149619
+        },
+        {
+          "date": "2025-03-31",
+          "calendarYear": "2025",
+          "fiscalYear": "2025",
+          "period": "Q1",
+          "revenue": 1418000000.0,
+          "operatingIncome": 269590000.0,
+          "grossProfit": 986420000.0,
+          "operatingMargin": 0.19011988716502115,
+          "grossMargin": 0.695641748942172
+        },
+        {
           "date": "2025-06-30",
           "calendarYear": "2025",
+          "fiscalYear": "2025",
           "period": "Q2",
-          "revenue": 1204043000.0,
-          "operatingIncome": 171913000.0,
-          "grossProfit": 242658000.0,
-          "operatingMargin": 0.14277978444291442,
-          "grossMargin": 0.2015359916547831
+          "revenue": 1238000000.0,
+          "operatingIncome": 219030000.0,
+          "grossProfit": 818540000.0,
+          "operatingMargin": 0.17692245557350567,
+          "grossMargin": 0.6611793214862681
         },
         {
           "date": "2025-09-30",
           "calendarYear": "2025",
+          "fiscalYear": "2025",
           "period": "Q3",
-          "revenue": 1133481000.0,
-          "operatingIncome": 103844000.0,
-          "grossProfit": 172401000.0,
-          "operatingMargin": 0.09161512191205676,
-          "grossMargin": 0.1520987118443097
+          "revenue": 1168000000.0,
+          "operatingIncome": 130860000.00000001,
+          "grossProfit": 752680000.0,
+          "operatingMargin": 0.11203767123287672,
+          "grossMargin": 0.644417808219178
         },
         {
           "date": "2025-12-31",
           "calendarYear": "2025",
+          "fiscalYear": "2025",
           "period": "Q4",
-          "revenue": 1283496000.0,
-          "operatingIncome": 207066000.0,
-          "grossProfit": 271255000.0,
-          "operatingMargin": 0.16132968080928964,
-          "grossMargin": 0.21134074434201586
+          "revenue": 1315000000.0,
+          "operatingIncome": 291920000.0,
+          "grossProfit": 856330000.0,
+          "operatingMargin": 0.22199239543726237,
+          "grossMargin": 0.6512015209125476
         },
         {
           "date": "2026-03-31",
           "calendarYear": "2026",
+          "fiscalYear": "2026",
           "period": "Q1",
-          "revenue": 1862647000.0,
-          "operatingIncome": 661462000.0,
-          "grossProfit": 741776000.0,
-          "operatingMargin": 0.35511935433820796,
-          "grossMargin": 0.3982375619212873
+          "revenue": 1904000000.0,
+          "operatingIncome": 695540000.0,
+          "grossProfit": 1355000000.0,
+          "operatingMargin": 0.36530462184873946,
+          "grossMargin": 0.7116596638655462
         },
         {
           "date": "2026-06-30",
           "calendarYear": "2026",
+          "fiscalYear": "2026",
           "period": "Q2",
-          "revenue": 1337283000.0,
-          "operatingIncome": 206324000.0,
-          "grossProfit": 276165000.0,
-          "operatingMargin": 0.15428596639604333,
-          "grossMargin": 0.206512009798973
+          "revenue": 1393000000.0,
+          "operatingIncome": 362500000.0,
+          "grossProfit": 918630000.0,
+          "operatingMargin": 0.26022972002871503,
+          "grossMargin": 0.6594615936826992
         }
       ],
-      "quarterlyHistoryCurrency": null,
-      "quarterlyHistorySource": "yfinance",
-      "quarterlyHistoryError": "HTTP Error 429: Too Many Requests",
-      "quarterlyHistoryCount": 5,
-      "quarterlyHistoryComplete": false
+      "quarterlyHistoryCurrency": "USD",
+      "quarterlyHistorySource": "stockanalysis.com",
+      "quarterlyHistoryError": null,
+      "quarterlyHistoryCount": 12,
+      "quarterlyHistoryComplete": true
     },
     "EE": {
       "ticker": "EE",
