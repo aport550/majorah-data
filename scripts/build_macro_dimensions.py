@@ -75,16 +75,17 @@ def extract_close(df: pd.DataFrame, tickers: list[str]) -> pd.DataFrame:
     return prices.reindex(columns=tickers).apply(pd.to_numeric, errors="coerce")
 
 
-def download_prices(start: str, end: str) -> pd.DataFrame:
+def download_prices(start: str, end: str, tickers=None, auto_adjust=True) -> pd.DataFrame:
     import yfinance as yf
 
     prices = pd.DataFrame()
-    pending = TICKERS.copy()
+    tickers = list(TICKERS if tickers is None else tickers)
+    pending = tickers.copy()
     for attempt in range(MAX_ATTEMPTS):
         try:
             downloaded = yf.download(
                 tickers=pending, start=start, end=end, interval="1d",
-                auto_adjust=True, progress=False, group_by="column",
+                auto_adjust=auto_adjust, progress=False, group_by="column",
                 threads=2, timeout=30,
             )
             part = extract_close(downloaded, pending)
@@ -99,7 +100,7 @@ def download_prices(start: str, end: str) -> pd.DataFrame:
             time.sleep(5 * 2 ** attempt)
     if pending:
         raise RuntimeError(f"Missing all price history for {pending}; outputs not replaced")
-    prices = prices.reindex(columns=TICKERS).sort_index()
+    prices = prices.reindex(columns=tickers).sort_index()
     prices = prices.where(np.isfinite(prices) & (prices > 0))
     # SPY supplies the equity trading calendar; missing anchors remain missing.
     prices = prices.loc[prices["SPY"].notna()]
@@ -214,6 +215,35 @@ def write_json(path: Path, value) -> None:
     temp.replace(path)
 
 
+
+# Separate price-only proxy model. Never used to classify existing regimes.
+LEVEL_TICKERS = ["HYG", "SCHP", "TLT", "UUP", "SPY", "IEF"]
+LEVEL_FORMULAS = {
+    "real_rates_score": "1 / SCHP",
+    "credit_score": "IEF / HYG",
+    "inflation_score": "SCHP / IEF",
+    "dollar_score": "UUP",
+    "growth_score": "SPY",
+}
+
+
+def build_levels(prices: pd.DataFrame) -> pd.DataFrame:
+    p = prices.where(prices > 0)
+    out = pd.DataFrame(index=p.index)
+    out["real_rates_score"] = 1 / p["SCHP"]
+    out["credit_score"] = p["IEF"] / p["HYG"]
+    out["inflation_score"] = p["SCHP"] / p["IEF"]
+    out["dollar_score"] = p["UUP"]
+    out["growth_score"] = p["SPY"]
+    # Constant rescaling only, not cumulative returns. Missing prices stay null.
+    for key in out:
+        valid = out[key].dropna()
+        if valid.empty:
+            raise RuntimeError(f"No valid prices for {key}")
+        out[key] = 100 * out[key] / valid.iloc[0]
+    return out
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     default_root = Path(__file__).resolve().parents[1]
@@ -237,6 +267,10 @@ def main() -> None:
     prices_out, returns_out, scores_out = prices.loc[mask], returns.loc[mask], scores.loc[mask]
     if scores_out.empty:
         raise RuntimeError("No output dates; existing files untouched")
+    # Yahoo Close is normally split-adjusted but not dividend-adjusted.
+    level_prices = download_prices(args.warmup_start, args.end, LEVEL_TICKERS, False)
+    level_prices = level_prices.loc[(level_prices.index >= start) & (level_prices.index < end)]
+    levels = build_levels(level_prices)
     data, public = args.root / "data", args.root / "public" / "data"
     data.mkdir(parents=True, exist_ok=True)
     public.mkdir(parents=True, exist_ok=True)
@@ -247,6 +281,16 @@ def main() -> None:
         temp = path.with_suffix(".csv.tmp")
         frame.to_csv(temp, index_label="date")
         temp.replace(path)
+    level_prices.to_csv(data / "macro_anchor_close_prices.csv", index_label="date")
+    level_rows = levels.rename_axis("date").reset_index()
+    level_rows["date"] = level_rows["date"].dt.strftime("%Y-%m-%d")
+    write_json(public / "macro_levels.json", json.loads(level_rows.to_json(orient="records", double_precision=10)))
+    write_json(public / "macro_level_metadata.json", {
+        "tickers": LEVEL_TICKERS, "formulas": LEVEL_FORMULAS,
+        "price_field": "Close; auto_adjust=False", "base": "100 at first valid observation per dimension",
+        "last_output_date": level_rows["date"].iloc[-1],
+        "limitations": ["Price ratios are proxies, not measured yields or spreads", "ETF distributions, duration mismatch, inflation accrual and fund rollovers can distort levels", "SPY is equity risk appetite, not GDP", "TLT is retained in the price table but not used in the five level formulas"]
+    })
     # Retain the diagnostic output; only this file uses mean-centered z-scores.
     mean = returns.rolling(ROLLING_WINDOW, min_periods=MIN_PERIODS).mean().shift(1)
     std = returns.rolling(ROLLING_WINDOW, min_periods=MIN_PERIODS).std(ddof=0).shift(1)
