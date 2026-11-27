@@ -1,0 +1,26 @@
+{
+  "tickers": [
+    "HYG",
+    "SCHP",
+    "TLT",
+    "UUP",
+    "SPY",
+    "IEF"
+  ],
+  "formulas": {
+    "real_rates_score": "1 / SCHP",
+    "credit_score": "IEF / HYG",
+    "inflation_score": "SCHP / IEF",
+    "dollar_score": "UUP",
+    "growth_score": "SPY"
+  },
+  "price_field": "Close; auto_adjust=False",
+  "base": "100 at first valid observation per dimension",
+  "last_output_date": "2026-11-25",
+  "limitations": [
+    "Price ratios are proxies, not measured yields or spreads",
+    "ETF distributions, duration mismatch, inflation accrual and fund rollovers can distort levels",
+    "SPY is equity risk appetite, not GDP",
+    "TLT is retained in the price table but not used in the five level formulas"
+  ]
+}
