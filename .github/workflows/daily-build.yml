@@ -175,6 +175,9 @@ jobs:
           test -f public/data/sectors.json
           test -f public/data/fundamental_trends.json
           test -f public/data/macro_dimension_scores.json
+          test -f data/macro_anchor_close_prices.csv
+          test -f public/data/macro_levels.json
+          test -f public/data/macro_level_metadata.json
           test -f public/data/market_scenario_daily_scores.json
           test -f public/data/universe_scenario_exposures.json
           test -f public/data/stock_macro_exposures.json
@@ -246,6 +249,9 @@ jobs:
             public/data/sectors.json
             public/data/fundamental_trends.json
             public/data/macro_dimension_scores.json
+            data/macro_anchor_close_prices.csv
+            public/data/macro_levels.json
+            public/data/macro_level_metadata.json
             public/data/market_scenario_daily_scores.json
             public/data/universe_scenario_exposures.json
             public/data/stock_macro_exposures.json
@@ -297,6 +303,9 @@ jobs:
             public/data/covariance_matrix.csv \
             public/data/expected_returns.json \
             public/data/macro_dimension_scores.json \
+            data/macro_anchor_close_prices.csv \
+            public/data/macro_levels.json \
+            public/data/macro_level_metadata.json \
             public/data/market_scenario_daily_scores.json \
             public/data/universe_scenario_exposures.json \
             public/data/stock_macro_exposures.json \
