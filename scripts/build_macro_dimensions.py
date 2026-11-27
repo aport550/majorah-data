@@ -92,7 +92,7 @@ def download_prices(start: str, end: str, tickers=None, auto_adjust=True) -> pd.
             prices = prices.combine_first(part)
         except Exception as exc:
             print(f"Download attempt {attempt + 1}: {exc}")
-        pending = [t for t in TICKERS
+        pending = [t for t in tickers
                    if t not in prices or not prices[t].notna().any()]
         if not pending:
             break
